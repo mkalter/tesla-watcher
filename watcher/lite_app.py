@@ -18,7 +18,7 @@ from types import SimpleNamespace
 from urllib.parse import urlsplit
 from html import escape
 from .cli import load_config,scan
-from .models import now
+from .models import now,Listing,reject_reason,message
 from .store import Store
 from .native_whatsapp import NativeWhatsApp,deliver_native,recover_inflight
 
@@ -27,7 +27,7 @@ def load_env(path):
     """Only known settings; never execute a shell or overwrite panel variables."""
     if not path.exists():return
     allowed={'WHATSAPP_TO','ADMIN_PASSWORD','BRIDGE_TOKEN','PORT','SERVER_PORT','HOST',
-             'DATA_DIR','CONFIG_FILE','TERMINAL_QR','SEND_NOTIFICATIONS','ENABLE_HTTPS_TUNNEL'}
+             'DATA_DIR','CONFIG_FILE','TERMINAL_QR','SEND_NOTIFICATIONS','ENABLE_HTTPS_TUNNEL','EXAMPLE_BATCH'}
     for line in path.read_text(encoding='utf-8').splitlines():
         if not line.strip() or line.lstrip().startswith('#') or '=' not in line:continue
         key,value=line.split('=',1)
@@ -130,6 +130,36 @@ class LiteApp:
             self.driver.set_recipient(number)
             self._notice='Ontvangernummer opgeslagen. Stuur nu een testmelding.'
 
+    def queue_examples(self,batch=None,require_ready=True):
+        """One genuine stored eligible listing per source, explicitly labelled sample."""
+        manual=batch is None
+        batch=batch or secrets.token_hex(16)
+        if not re.fullmatch(r'[A-Za-z0-9_-]{8,80}',batch):raise ValueError('Ongeldige voorbeeldreeks.')
+        with self._lock:
+            if not self._enabled:raise ValueError('Zet meldingen eerst aan.')
+            if require_ready and not self.driver.ready():raise ValueError('Koppel WhatsApp en kies je ontvangernummer eerst.')
+            queued=[];missing=[]
+            with sqlite3.connect(self.config['database'],timeout=10) as connection:
+                if manual and connection.execute("SELECT 1 FROM events WHERE kind='example' AND state IN ('queued','sending') LIMIT 1").fetchone():
+                    raise ValueError('Er staat al een reeks bronvoorbeelden klaar.')
+                for source in self.config['sources']:
+                    if not source.get('enabled',True):continue
+                    name=source['name']
+                    event_id=hashlib.sha256(('sample:'+batch+':'+name).encode()).hexdigest()
+                    if connection.execute('SELECT id FROM events WHERE id=?',(event_id,)).fetchone():continue
+                    selected=None
+                    for raw,seen in connection.execute('SELECT payload,last_seen FROM listings WHERE source=? ORDER BY last_seen DESC,source_id',(name,)):
+                        candidate=Listing(**json.loads(raw))
+                        if not reject_reason(candidate,self.config['filters']):selected=candidate;break
+                    if selected is None:missing.append(name);continue
+                    text='VOORBEELD — '+name+'\nGeen nieuwe advertentie; voorbeeld uit de laatste opgeslagen scan.\n\n'+message(selected).replace('Nieuwe Tesla Model S','Tesla Model S',1)
+                    connection.execute("INSERT INTO events(id,kind,payload,text,created_at) VALUES (?,'example',?,?,?)",(event_id,json.dumps(selected.to_dict()),text,now()))
+                    queued.append(name)
+            result={'queued':queued,'missing':missing,'batch':batch}
+            (self.directory/'examples-last.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+            self._notice=f'{len(queued)} bronvoorbeelden in de wachtrij.'+(' Geen passend opgeslagen resultaat: '+', '.join(missing) if missing else '')
+            return result
+
     def resolve(self,event_id,decision):
         if not re.fullmatch(r'[a-f0-9]{64}',event_id) or decision not in ('retry','sent','discard'):
             raise ValueError('Ongeldige eventkeuze.')
@@ -185,6 +215,12 @@ class LiteApp:
                     try:
                         # A separate worker delivers even during a lengthy source scan.
                         result=self.scan_fn(self.config,args,notifier=lambda store:0)
+                        batch=os.environ.get('EXAMPLE_BATCH')
+                        request_file=Path(__file__).resolve().parents[1]/'example-request.txt'
+                        if not batch and request_file.exists():batch=request_file.read_text(encoding='utf-8').strip()
+                        if batch:
+                            try:self.queue_examples(batch,require_ready=False)
+                            except ValueError:pass  # Pausing notifications must not change the scan schedule.
                         with self._lock:
                             self._last_scan=now();self._notice='Scan afgerond.' if result==0 else 'Scan afgerond met fouten; zie bronstatus.'
                         self.prune_snapshots()
@@ -257,6 +293,7 @@ class LiteApp:
                     body=self.rfile.read(size)
                     if self.path=='/scan':app.request_scan()
                     elif self.path=='/test':app.queue_test()
+                    elif self.path=='/examples':app.queue_examples()
                     elif self.path=='/notifications/on':app.set_notifications(True)
                     elif self.path=='/notifications/off':app.set_notifications(False)
                     elif self.path=='/whatsapp/relink':app.relink_whatsapp()
@@ -288,7 +325,7 @@ def render(status):
         reviews+='<details><summary>Onzekere verzending — controleer je WhatsApp-chat</summary><pre>'+escape(event['text'])+'</pre><form method="post" action="/resolve"><input type="hidden" name="id" value="'+escape(event['id'])+'"><button name="decision" value="sent">Staat al in mijn chat</button><button name="decision" value="retry">Niet verzonden: opnieuw proberen</button><button name="decision" value="discard">Overslaan</button></form></details>'
     toggle='off' if status['notifications'] else 'on'
     label='Meldingen pauzeren' if status['notifications'] else 'Meldingen aanzetten'
-    return '''<!doctype html><html lang="nl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="5"><title>Tesla Watcher</title><style>body{font:16px system-ui;color:#161616;background:#f5f5f7;max-width:1080px;margin:32px auto;padding:16px}section{background:white;padding:24px;border-radius:20px;margin:16px 0}h1{font-size:36px;margin:0}.qr{max-width:280px;width:100%}button{border:0;background:#0071e3;color:white;border-radius:10px;padding:10px 16px;cursor:pointer;margin:4px}form{display:inline}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:10px 6px;border-bottom:1px solid #eee}pre{white-space:pre-wrap;overflow-wrap:anywhere}.scroll{overflow-x:auto}.muted{color:#666}</style><h1>Tesla Watcher</h1><p class="muted">Nieuwe Tesla Model S-advertenties vanaf 2022 · elke tien minuten</p><section><h2>WhatsApp koppelen</h2><p>WhatsApp → Instellingen → Gekoppelde apparaten → Apparaat koppelen.</p>'''+pairing+recipient_form+'<p>'+escape(w.get('error',''))+'''</p><form method="post" action="/test"><button>Stuur testmelding</button></form><p class="muted">Controleer ook of je telefoon een pushmelding geeft. Berichten aan jezelf geven mogelijk geen geluid.</p></section><section><h2>Scanner</h2><p>'''+escape(status['notice'])+'</p><p>'+('Scan loopt.' if status['active'] else 'Volgende scan over '+str(status['next_scan_in'])+' seconden.')+'</p><form method="post" action="/scan"><button>Nu scannen</button></form><form method="post" action="/notifications/'+toggle+'"><button>'+label+'</button></form><p>Wachtrij: '+escape(json.dumps(status['events']))+'</p><div class="scroll"><table><tr><th>Bron</th><th>Status</th><th>Advertenties</th><th>Laatste succes (UTC)</th><th>Fout</th></tr>'+rows+'</table></div>'+reviews+'</section></html>'
+    return '''<!doctype html><html lang="nl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="5"><title>Tesla Watcher</title><style>body{font:16px system-ui;color:#161616;background:#f5f5f7;max-width:1080px;margin:32px auto;padding:16px}section{background:white;padding:24px;border-radius:20px;margin:16px 0}h1{font-size:36px;margin:0}.qr{max-width:280px;width:100%}button{border:0;background:#0071e3;color:white;border-radius:10px;padding:10px 16px;cursor:pointer;margin:4px}form{display:inline}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:10px 6px;border-bottom:1px solid #eee}pre{white-space:pre-wrap;overflow-wrap:anywhere}.scroll{overflow-x:auto}.muted{color:#666}</style><h1>Tesla Watcher</h1><p class="muted">Nieuwe Tesla Model S-advertenties vanaf 2022 · elke tien minuten</p><section><h2>WhatsApp koppelen</h2><p>WhatsApp → Instellingen → Gekoppelde apparaten → Apparaat koppelen.</p>'''+pairing+recipient_form+'<p>'+escape(w.get('error',''))+'''</p><form method="post" action="/test"><button>Stuur testmelding</button></form><form method="post" action="/examples"><button>Stuur één Tesla per bron</button></form><p class="muted">Berichten aan je eigen gekoppelde account zijn uitgaand en geven normaal geen pushmelding. Gebruik een ander WhatsApp-account als afzender voor inkomende meldingen.</p></section><section><h2>Scanner</h2><p>'''+escape(status['notice'])+'</p><p>'+('Scan loopt.' if status['active'] else 'Volgende scan over '+str(status['next_scan_in'])+' seconden.')+'</p><form method="post" action="/scan"><button>Nu scannen</button></form><form method="post" action="/notifications/'+toggle+'"><button>'+label+'</button></form><p>Wachtrij: '+escape(json.dumps(status['events']))+'</p><div class="scroll"><table><tr><th>Bron</th><th>Status</th><th>Advertenties</th><th>Laatste succes (UTC)</th><th>Fout</th></tr>'+rows+'</table></div>'+reviews+'</section></html>'
 
 
 def main():
@@ -329,3 +366,4 @@ def main():
     finally:
         server.server_close();app.stop()
         if tunnel:tunnel.stop()
+

@@ -1,5 +1,6 @@
 """Text-only WhatsApp linked device. No browser, Node.js or paid API."""
 import io
+import json
 import logging
 import os
 from pathlib import Path
@@ -224,9 +225,13 @@ def deliver_native(store,driver,clock=None,max_batch=20,pause=2):
         try:
             driver.send(event['text'])
             store.set_event(event['id'],'sent')
+            try:source=json.loads(event['payload'] or '{}').get('source','test')
+            except (TypeError,json.JSONDecodeError):source='unknown'
+            print(json.dumps({'whatsapp':'server_acknowledged','kind':event['kind'],'source':source,'event':event['id'][:12]}),flush=True)
             sent+=1
         except Exception as exc:
             store.set_event(event['id'],'uncertain',f'{type(exc).__name__}: inspect WhatsApp before retry')
             break
         if pause and sent<max_batch:time.sleep(pause)
     return sent
+

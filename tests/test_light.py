@@ -142,6 +142,10 @@ class WebTests(unittest.TestCase):
     def test_cross_origin_post_rejected(self):
         self.assertEqual(self.request('/test','POST',origin='https://evil.test')[0],403)
         self.assertEqual(len(self.driver.sent),0)
+    def test_examples_require_login_and_reject_foreign_origin(self):
+        self.assertEqual(self.request('/examples','POST',auth=False)[0],401)
+        self.assertEqual(self.request('/examples','POST',origin='https://evil.test')[0],403)
+        self.assertEqual(self.request('/examples','POST')[0],303)
     def test_recipient_setup_requires_auth_and_persists(self):
         self.assertEqual(self.request('/recipient','POST',auth=False,body='number=31612345678')[0],401)
         self.assertEqual(self.request('/recipient','POST',body='number=invalid')[0],400)
@@ -185,3 +189,4 @@ class WebTests(unittest.TestCase):
         finally:release.set();self.app.stop()
 
 if __name__=='__main__':unittest.main()
+

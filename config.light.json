@@ -82,15 +82,13 @@
       "name": "mobile",
       "kind": "mobile",
       "enabled": true,
-      "url": "https://suchen.mobile.de/fahrzeuge/search.html?isSearchRequest=true&ms=135%3B3%3B%3B&fr=2022%3A&vc=Car&sb=doc&od=down",
+      "url": "https://suchen.mobile.de/fahrzeuge/search.html?dam=false&fr=2022&isSearchRequest=true&ms=135%3B3%3B%3B&od=up&s=Car&sb=rel&vc=Car",
       "country": "DE",
       "link_pattern": "^https://suchen\\.mobile\\.de/fahrzeuge/details\\.html\\?",
       "card_pattern": "listingCard|result-listing",
       "year_pattern": "\\bEZ\\s+(?:\\d{2}/)?(20\\d{2})\\b",
       "year_basis": "first_registration",
-      "max_pages": 50,
-      "partition_by_registration_year": true,
-      "min_registration_year": 2022
+      "max_pages": 50
     },
     {
       "name": "2dehands",
