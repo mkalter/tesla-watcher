@@ -1,0 +1,9 @@
+.env
+data
+reports
+tests
+fixtures
+node_modules
+.git
+__pycache__
+*.zip

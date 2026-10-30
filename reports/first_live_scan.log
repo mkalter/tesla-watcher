@@ -1,0 +1,39 @@
+{"source": "autoscout_nl", "page": 1, "parsed_on_page": 7}
+{"source": "autoscout_nl", "status": "ok", "pages": 1, "parsed": 7, "matching": 7, "events": 0}
+{"source": "autoscout_be", "page": 1, "parsed_on_page": 13}
+{"source": "autoscout_be", "status": "ok", "pages": 1, "parsed": 11, "matching": 10, "events": 0}
+{"source": "autoscout_de", "page": 1, "parsed_on_page": 20}
+{"source": "carapis", "page": 1, "parsed_on_page": 24}
+{"source": "marktplaats", "page": 1, "parsed_on_page": 30}
+{"source": "autoscout_de", "page": 2, "parsed_on_page": 20}
+{"source": "marktplaats", "page": 2, "parsed_on_page": 30}
+{"source": "autoscout_de", "page": 3, "parsed_on_page": 16}
+{"source": "autoscout_de", "status": "ok", "pages": 3, "parsed": 55, "matching": 55, "events": 0}
+{"source": "carapis", "page": 2, "parsed_on_page": 24}
+{"source": "marktplaats", "page": 3, "parsed_on_page": 30}
+{"source": "gaspedaal", "page": 1, "parsed_on_page": 95}
+{"source": "gaspedaal", "status": "ok", "pages": 1, "parsed": 95, "matching": 7, "events": 0}
+{"source": "marktplaats", "page": 4, "parsed_on_page": 28}
+{"source": "marktplaats", "status": "ok", "pages": 4, "parsed": 118, "matching": 6, "events": 0}
+{"source": "carapis", "page": 3, "parsed_on_page": 24}
+{"source": "mobile", "page": 1, "parsed_on_page": 22}
+{"source": "2dehands", "page": 1, "parsed_on_page": 30}
+{"source": "carapis", "page": 4, "parsed_on_page": 24}
+{"source": "2dehands", "page": 2, "parsed_on_page": 9}
+{"source": "2dehands", "status": "ok", "pages": 2, "parsed": 39, "matching": 10, "events": 0}
+{"source": "mobile", "page": 2, "parsed_on_page": 20}
+{"source": "kleinanzeigen", "page": 1, "parsed_on_page": 23}
+{"source": "carapis", "page": 5, "parsed_on_page": 24}
+{"source": "kleinanzeigen", "page": 2, "parsed_on_page": 19}
+{"source": "mobile", "page": 3, "parsed_on_page": 20}
+{"source": "carapis", "page": 6, "parsed_on_page": 24}
+{"source": "kleinanzeigen", "page": 3, "parsed_on_page": 19}
+{"source": "mobile", "status": "error", "error": "HTTP Error 403: Forbidden"}
+{"source": "kleinanzeigen", "page": 4, "parsed_on_page": 15}
+{"source": "kleinanzeigen", "status": "ok", "pages": 4, "parsed": 73, "matching": 4, "events": 0}
+{"source": "carapis", "page": 7, "parsed_on_page": 24}
+{"source": "carapis", "page": 8, "parsed_on_page": 24}
+{"source": "carapis", "page": 9, "parsed_on_page": 24}
+{"source": "carapis", "page": 10, "parsed_on_page": 24}
+{"source": "carapis", "page": 11, "parsed_on_page": 23}
+{"source": "carapis", "status": "ok", "pages": 11, "parsed": 263, "matching": 263, "events": 0}

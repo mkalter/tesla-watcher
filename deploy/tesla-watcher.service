@@ -1,0 +1,21 @@
+[Unit]
+Description=Tesla Model S listing watcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=teslawatcher
+WorkingDirectory=/opt/tesla-watcher
+EnvironmentFile=/opt/tesla-watcher/.env
+ExecStart=/opt/tesla-watcher/.venv/bin/python -m watcher.cli run
+Restart=on-failure
+RestartSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/tesla-watcher/data
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,32 @@
+{
+  "test_type": "SYNTHETIC_30_DAY_REPLAY",
+  "seed": 421022,
+  "historical_market_backtest": false,
+  "duration_days": 30,
+  "scan_interval_seconds": 600,
+  "rounds": 4321,
+  "source_snapshots": 8642,
+  "listing_observations": 78908,
+  "injected_source_errors": 30,
+  "process_restarts": 8,
+  "expected_new_cars": 40,
+  "actual_new_alerts": 40,
+  "true_positive": 40,
+  "false_positive": 0,
+  "missed": 0,
+  "duplicate_alerts": 0,
+  "precision": 1.0,
+  "recall": 1.0,
+  "latency_seconds": {
+    "min": 14.0,
+    "max": 567.0,
+    "mean": 256.3
+  },
+  "runtime_seconds": 18.547,
+  "limitations": [
+    "Generated scenarios, not archived car advertisements.",
+    "Latency is simulated scan latency, not measured WhatsApp delivery time.",
+    "This does not establish recall on real sites or guarantee WhatsApp account availability."
+  ],
+  "passed": true
+}

@@ -1,0 +1,124 @@
+{
+  "type": "LIVE_WEBSITE_SCAN",
+  "created_at": "2026-10-30T09:57:22.848433+00:00",
+  "sources": [
+    {
+      "source": "carapis",
+      "checked_at": "2026-10-30T09:43:55+00:00",
+      "status": "ok",
+      "pages": 11,
+      "listings": 263,
+      "matching": 263,
+      "year_known": 263,
+      "price_known": 198,
+      "mileage_known": 257,
+      "error": null
+    },
+    {
+      "source": "autoscout_nl",
+      "checked_at": "2026-10-30T09:43:55+00:00",
+      "status": "ok",
+      "pages": 1,
+      "listings": 7,
+      "matching": 7,
+      "year_known": 7,
+      "price_known": 7,
+      "mileage_known": 7,
+      "error": null
+    },
+    {
+      "source": "autoscout_be",
+      "checked_at": "2026-10-30T09:43:55+00:00",
+      "status": "ok",
+      "pages": 1,
+      "listings": 11,
+      "matching": 10,
+      "year_known": 11,
+      "price_known": 11,
+      "mileage_known": 11,
+      "error": null
+    },
+    {
+      "source": "autoscout_de",
+      "checked_at": "2026-10-30T09:43:55+00:00",
+      "status": "ok",
+      "pages": 3,
+      "listings": 55,
+      "matching": 55,
+      "year_known": 55,
+      "price_known": 55,
+      "mileage_known": 55,
+      "error": null
+    },
+    {
+      "source": "marktplaats",
+      "checked_at": "2026-10-30T09:43:55+00:00",
+      "status": "ok",
+      "pages": 4,
+      "listings": 118,
+      "matching": 6,
+      "year_known": 115,
+      "price_known": 118,
+      "mileage_known": 111,
+      "error": null
+    },
+    {
+      "source": "gaspedaal",
+      "checked_at": "2026-10-30T09:43:55+00:00",
+      "status": "ok",
+      "pages": 1,
+      "listings": 95,
+      "matching": 7,
+      "year_known": 95,
+      "price_known": 95,
+      "mileage_known": 95,
+      "error": null
+    },
+    {
+      "source": "mobile",
+      "checked_at": "2026-10-30T09:51:39+00:00",
+      "status": "ok",
+      "pages": 8,
+      "listings": 80,
+      "matching": 74,
+      "year_known": 79,
+      "price_known": 80,
+      "mileage_known": 79,
+      "error": null
+    },
+    {
+      "source": "2dehands",
+      "checked_at": "2026-10-30T09:43:55+00:00",
+      "status": "ok",
+      "pages": 2,
+      "listings": 39,
+      "matching": 10,
+      "year_known": 33,
+      "price_known": 39,
+      "mileage_known": 33,
+      "error": null
+    },
+    {
+      "source": "kleinanzeigen",
+      "checked_at": "2026-10-30T09:43:55+00:00",
+      "status": "ok",
+      "pages": 4,
+      "listings": 73,
+      "matching": 4,
+      "year_known": 73,
+      "price_known": 70,
+      "mileage_known": 73,
+      "error": null
+    }
+  ],
+  "total_listing_observations": 741,
+  "all_sources_successful": true,
+  "limitations": [
+    "Counts overlap across marketplaces; these are not unique cars.",
+    "Parsing succeeded for the returned pages; this does not prove total marketplace recall.",
+    "No real WhatsApp account was linked and no WhatsApp messages were sent.",
+    "Dockerfiles were supplied and Compose YAML parsed, but Docker images were not built here.",
+    "Playwright browser fallback was not exercised; live validation used website HTML via HTTP."
+  ],
+  "mobile_note": "Initial broad search: HTTP 403 on page four. Full year-partition scan then succeeded."
+}

@@ -1,0 +1,116 @@
+{
+  "interval_seconds": 600,
+  "database": "data/watcher.sqlite",
+  "archive_dir": "data/snapshots",
+  "status_file": "data/status.json",
+  "price_alerts": false,
+  "min_price_drop": 500,
+  "filters": {
+    "min_year": 2022,
+    "allow_first_registration": true,
+    "max_price": null,
+    "max_mileage": null,
+    "countries": [],
+    "variant": "any",
+    "exclude_plaid": false,
+    "include_damaged": false
+  },
+  "notifications": {
+    "enabled": false,
+    "bridge_url": "http://127.0.0.1:3000"
+  },
+  "sources": [
+    {
+      "name": "carapis",
+      "kind": "carapis",
+      "enabled": true,
+      "url": "https://carapis.com/catalog/?brand=tesla&model=model-s&minYear=2022",
+      "country": "",
+      "link_pattern": "^https://carapis\\.com/catalog/tesla/model-s/[a-z0-9-]+/?$",
+      "max_pages": 50
+    },
+    {
+      "name": "autoscout_nl",
+      "kind": "autoscout",
+      "enabled": true,
+      "url": "https://www.autoscout24.nl/lst/tesla/model-s?fregfrom=2022&sort=age&desc=0",
+      "country": "NL",
+      "link_pattern": "^https://www\\.autoscout24\\.nl/aanbod/",
+      "card_pattern": "ListItem",
+      "year_pattern": "\\b\\d{2}/(20\\d{2})\\b",
+      "year_basis": "first_registration",
+      "max_pages": 50
+    },
+    {
+      "name": "autoscout_be",
+      "kind": "autoscout",
+      "enabled": true,
+      "url": "https://www.autoscout24.be/nl/lst/tesla/model-s?fregfrom=2022&sort=age&desc=0",
+      "country": "BE",
+      "link_pattern": "^https://www\\.autoscout24\\.be/(?:nl/)?aanbod/",
+      "max_pages": 50
+    },
+    {
+      "name": "autoscout_de",
+      "kind": "autoscout",
+      "enabled": true,
+      "url": "https://www.autoscout24.de/lst/tesla/model-s?fregfrom=2022&sort=age&desc=0",
+      "country": "DE",
+      "link_pattern": "^https://www\\.autoscout24\\.de/angebote/",
+      "max_pages": 50
+    },
+    {
+      "name": "marktplaats",
+      "kind": "marketplace",
+      "enabled": true,
+      "url": "https://www.marktplaats.nl/l/auto-s/tesla/f/model-s/11735/",
+      "country": "NL",
+      "link_pattern": "^https://www\\.marktplaats\\.nl/v/auto-s/tesla/[ma]\\d+",
+      "max_pages": 50
+    },
+    {
+      "name": "gaspedaal",
+      "kind": "gaspedaal",
+      "enabled": true,
+      "url": "https://www.gaspedaal.nl/tesla/model-s",
+      "country": "NL",
+      "link_pattern": "^https://(?:www\\.gaspedaal\\.nl/tesla/model-s#\\d+|api\\.gaspedaal\\.nl/redirect/vehicle/\\d+)",
+      "page_size": 100,
+      "max_pages": 50
+    },
+    {
+      "name": "mobile",
+      "kind": "mobile",
+      "enabled": true,
+      "url": "https://suchen.mobile.de/fahrzeuge/search.html?isSearchRequest=true&ms=135%3B3%3B%3B&fr=2022%3A&vc=Car&sb=doc&od=down",
+      "country": "DE",
+      "link_pattern": "^https://suchen\\.mobile\\.de/fahrzeuge/details\\.html\\?",
+      "card_pattern": "listingCard|result-listing",
+      "year_pattern": "\\bEZ\\s+(?:\\d{2}/)?(20\\d{2})\\b",
+      "year_basis": "first_registration",
+      "max_pages": 50,
+      "partition_by_registration_year": true,
+      "min_registration_year": 2022
+    },
+    {
+      "name": "2dehands",
+      "kind": "marketplace",
+      "enabled": true,
+      "url": "https://www.2dehands.be/l/auto-s/tesla/f/model-s/11735/",
+      "country": "BE",
+      "link_pattern": "^https://www\\.2dehands\\.be/v/auto-s/tesla/[ma]\\d+",
+      "max_pages": 50
+    },
+    {
+      "name": "kleinanzeigen",
+      "kind": "kleinanzeigen",
+      "enabled": true,
+      "url": "https://www.kleinanzeigen.de/s-autos/tesla-model-s/k0c216",
+      "country": "DE",
+      "link_pattern": "^https://www\\.kleinanzeigen\\.de/s-anzeige/",
+      "year_pattern": "\\bEZ\\s+(?:\\d{2}/)?(20\\d{2})\\b",
+      "year_basis": "first_registration",
+      "max_pages": 50
+    }
+  ]
+}

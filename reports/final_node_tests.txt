@@ -1,0 +1,16 @@
+✔ duplicate and concurrent event IDs send once (8.323414ms)
+✔ ledger survives restart (3.470265ms)
+✔ failed send becomes uncertain, never blindly retried (2.383712ms)
+✔ not connected is retryable before send (3.026083ms)
+✔ same event with different body is rejected (3.167875ms)
+✔ HTTP authentication, recipient restriction, payload validation (103.098897ms)
+✔ pending ledger after crash requires review (2.420616ms)
+✔ manual review can clear an uncertain event through authenticated HTTP (59.475664ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 344.304445

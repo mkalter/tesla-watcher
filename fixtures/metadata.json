@@ -1,0 +1,87 @@
+[
+  {
+    "source": "carapis",
+    "url": "https://carapis.com/catalog/?brand=tesla&model=model-s&minYear=2022",
+    "captured_date": "2026-10-30",
+    "fixture": "fixtures/carapis.html",
+    "expected": {
+      "year": 2023,
+      "price": 84500,
+      "mileage": 5201,
+      "currency": "USD"
+    },
+    "note": "Reduced real website structure; contact details and images removed. DOM fixtures keep only title and verified price/year/km fields."
+  },
+  {
+    "source": "autoscout_nl",
+    "url": "https://www.autoscout24.nl/lst/tesla/model-s?fregfrom=2022&sort=age&desc=0",
+    "captured_date": "2026-10-30",
+    "fixture": "fixtures/autoscout_nl.html",
+    "expected": {
+      "year": 2023,
+      "price": 69950,
+      "mileage": 44315
+    },
+    "note": "Reduced real website structure; contact details and images removed. DOM fixtures keep only title and verified price/year/km fields."
+  },
+  {
+    "source": "marktplaats",
+    "url": "https://www.marktplaats.nl/l/auto-s/tesla/f/model-s/11735/",
+    "captured_date": "2026-10-30",
+    "fixture": "fixtures/marktplaats.html",
+    "expected": {
+      "year": 2020,
+      "price": 42880,
+      "mileage": 144448
+    },
+    "note": "Reduced real website structure; contact details and images removed. DOM fixtures keep only title and verified price/year/km fields."
+  },
+  {
+    "source": "gaspedaal",
+    "url": "https://www.gaspedaal.nl/tesla/model-s",
+    "captured_date": "2026-10-30",
+    "fixture": "fixtures/gaspedaal.html",
+    "expected": {
+      "year": 2016,
+      "price": 19999,
+      "mileage": 243123
+    },
+    "note": "Reduced real website structure; contact details and images removed. DOM fixtures keep only title and verified price/year/km fields."
+  },
+  {
+    "source": "mobile",
+    "url": "https://suchen.mobile.de/fahrzeuge/search.html?isSearchRequest=true&ms=135%3B3%3B%3B&fr=2022%3A&vc=Car&sb=doc&od=down",
+    "captured_date": "2026-10-30",
+    "fixture": "fixtures/mobile.html",
+    "expected": {
+      "year": 2024,
+      "price": 114985,
+      "mileage": 28447
+    },
+    "note": "Reduced real website structure; contact details and images removed. DOM fixtures keep only title and verified price/year/km fields."
+  },
+  {
+    "source": "2dehands",
+    "url": "https://www.2dehands.be/l/auto-s/tesla/f/model-s/11735/",
+    "captured_date": "2026-10-30",
+    "fixture": "fixtures/2dehands.html",
+    "expected": {
+      "year": 2014,
+      "price": 35995,
+      "mileage": 126313
+    },
+    "note": "Reduced real website structure; contact details and images removed. DOM fixtures keep only title and verified price/year/km fields."
+  },
+  {
+    "source": "kleinanzeigen",
+    "url": "https://www.kleinanzeigen.de/s-autos/tesla-model-s/k0c216",
+    "captured_date": "2026-10-30",
+    "fixture": "fixtures/kleinanzeigen.html",
+    "expected": {
+      "year": 2020,
+      "price": 29990,
+      "mileage": 266000
+    },
+    "note": "Reduced real website structure; contact details and images removed. DOM fixtures keep only title and verified price/year/km fields."
+  }
+]

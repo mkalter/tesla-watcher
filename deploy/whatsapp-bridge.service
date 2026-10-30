@@ -1,0 +1,20 @@
+[Unit]
+Description=Tesla Watcher WhatsApp Web bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=teslawatcher
+WorkingDirectory=/opt/tesla-watcher/bridge
+EnvironmentFile=/opt/tesla-watcher/.env
+Environment=HOST=127.0.0.1
+Environment=BRIDGE_DATA=/opt/tesla-watcher/data/whatsapp
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

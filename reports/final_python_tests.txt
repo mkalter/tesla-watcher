@@ -1,0 +1,44 @@
+{"source": "test", "page": 1, "parsed_on_page": 1}
+{"source": "test", "page": 1, "parsed_on_page": 1}
+{"source": "test", "page": 1, "parsed_on_page": 1}
+{"source": "test", "page": 2, "parsed_on_page": 1}
+test_python_to_bridge_is_idempotent (test_delivery_e2e.DeliveryIntegration.test_python_to_bridge_is_idempotent) ... ok
+test_captured_source_records (test_live_fixtures.CapturedFixtureTests.test_captured_source_records) ... ok
+test_battery_year_is_not_build_year (test_watcher.ParserTests.test_battery_year_is_not_build_year) ... ok
+test_captcha_not_empty (test_watcher.ParserTests.test_captcha_not_empty) ... ok
+test_carapis_pagination_preserves_filters (test_watcher.ParserTests.test_carapis_pagination_preserves_filters) ... ok
+test_explicit_zero_is_valid (test_watcher.ParserTests.test_explicit_zero_is_valid) ... ok
+test_german_price_is_not_mileage (test_watcher.ParserTests.test_german_price_is_not_mileage) ... ok
+test_jsonld (test_watcher.ParserTests.test_jsonld) ... ok
+test_mobile_url_identity (test_watcher.ParserTests.test_mobile_url_identity) ... ok
+test_offsite_pagination_is_failure (test_watcher.ParserTests.test_offsite_pagination_is_failure) ... ok
+test_page_limit_is_failure (test_watcher.ParserTests.test_page_limit_is_failure) ... ok
+test_prices (test_watcher.ParserTests.test_prices) ... ok
+test_repeated_page_is_failure (test_watcher.ParserTests.test_repeated_page_is_failure) ... ok
+test_replay_out_of_order_rejected (test_watcher.ParserTests.test_replay_out_of_order_rejected) ... ok
+test_unknown_layout_fail_closed (test_watcher.ParserTests.test_unknown_layout_fail_closed) ... ok
+test_baseline_is_quiet (test_watcher.StoreTests.test_baseline_is_quiet) ... ok
+test_failed_first_scan_not_baseline (test_watcher.StoreTests.test_failed_first_scan_not_baseline) ... ok
+test_foreign_currency_with_eur_cap_rejected (test_watcher.StoreTests.test_foreign_currency_with_eur_cap_rejected) ... ok
+test_foreign_currency_without_cap_allowed (test_watcher.StoreTests.test_foreign_currency_without_cap_allowed) ... ok
+test_ingest_is_transactional (test_watcher.StoreTests.test_ingest_is_transactional) ... ok
+test_new_once_after_repeat_restart (test_watcher.StoreTests.test_new_once_after_repeat_restart) ... ok
+test_old_year_rejected (test_watcher.StoreTests.test_old_year_rejected) ... ok
+test_outbox_retry_not_ready (test_watcher.StoreTests.test_outbox_retry_not_ready) ... ok
+test_outbox_timeout_is_uncertain (test_watcher.StoreTests.test_outbox_timeout_is_uncertain) ... ok
+test_plate_country_duplicate (test_watcher.StoreTests.test_plate_country_duplicate) ... ok
+test_price_change_optional (test_watcher.StoreTests.test_price_change_optional) ... ok
+test_process_lock (test_watcher.StoreTests.test_process_lock) ... ok
+test_reappearance_not_new (test_watcher.StoreTests.test_reappearance_not_new) ... ok
+test_scope_change_requires_new_database (test_watcher.StoreTests.test_scope_change_requires_new_database) ... ok
+test_similar_cars_not_silently_merged (test_watcher.StoreTests.test_similar_cars_not_silently_merged) ... ok
+test_strict_build_year (test_watcher.StoreTests.test_strict_build_year) ... ok
+test_strong_vin_duplicate (test_watcher.StoreTests.test_strong_vin_duplicate) ... ok
+test_updated_unknown_year_can_become_eligible (test_watcher.StoreTests.test_updated_unknown_year_can_become_eligible) ... ok
+test_wanted_rejected (test_watcher.StoreTests.test_wanted_rejected) ... ok
+test_wrong_model_rejected (test_watcher.StoreTests.test_wrong_model_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 35 tests in 0.532s
+
+OK

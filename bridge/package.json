@@ -1,0 +1,1 @@
+{"name":"tesla-watcher-whatsapp-bridge","version":"1.0.0","private":true,"type":"commonjs","scripts":{"start":"node server.js","test":"node --test test.js"},"engines":{"node":">=20"},"dependencies":{"whatsapp-web.js":"1.34.7","qrcode":"1.5.4"}}

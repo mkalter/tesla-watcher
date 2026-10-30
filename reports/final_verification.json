@@ -1,0 +1,12 @@
+{
+  "python": {
+    "returncode": 0,
+    "output_characters": 3595,
+    "summary": "me_eligible (test_watcher.StoreTests.test_updated_unknown_year_can_become_eligible) ... ok\ntest_wanted_rejected (test_watcher.StoreTests.test_wanted_rejected) ... ok\ntest_wrong_model_rejected (test_watcher.StoreTests.test_wrong_model_rejected) ... ok\n\n----------------------------------------------------------------------\nRan 35 tests in 0.532s\n\nOK\n"
+  },
+  "node": {
+    "returncode": 0,
+    "output_characters": 602,
+    "summary": "y is rejected (3.167875ms)\n\u2714 HTTP authentication, recipient restriction, payload validation (103.098897ms)\n\u2714 pending ledger after crash requires review (2.420616ms)\n\u2714 manual review can clear an uncertain event through authenticated HTTP (59.475664ms)\n\u2139 tests 8\n\u2139 suites 0\n\u2139 pass 8\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 344.304445\n"
+  }
+}
