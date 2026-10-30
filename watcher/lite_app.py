@@ -27,7 +27,7 @@ def load_env(path):
     """Only known settings; never execute a shell or overwrite panel variables."""
     if not path.exists():return
     allowed={'WHATSAPP_TO','ADMIN_PASSWORD','BRIDGE_TOKEN','PORT','SERVER_PORT','HOST',
-             'DATA_DIR','CONFIG_FILE','TERMINAL_QR','SEND_NOTIFICATIONS','ENABLE_HTTPS_TUNNEL','EXAMPLE_BATCH'}
+             'DATA_DIR','CONFIG_FILE','TERMINAL_QR','SEND_NOTIFICATIONS','ENABLE_HTTPS_TUNNEL','EXAMPLE_BATCH','NTFY_TOPIC','NTFY_SERVER'}
     for line in path.read_text(encoding='utf-8').splitlines():
         if not line.strip() or line.lstrip().startswith('#') or '=' not in line:continue
         key,value=line.split('=',1)
@@ -55,8 +55,14 @@ class LiteApp:
                            status_file=str(self.directory/'status.json'))
         self.password=password
         recipient_file=self.directory/'recipient.txt'
-        if recipient_file.exists():recipient=recipient_file.read_text(encoding='utf-8').strip()
-        self.driver=driver or NativeWhatsApp(self.directory/'whatsapp',recipient,os.environ.get('TERMINAL_QR')=='1')
+        transport=self.config.get('notifications',{}).get('transport','native')
+        if driver is not None:self.driver=driver
+        elif transport=='ntfy':
+            from .ntfy import Ntfy
+            self.driver=Ntfy(self.directory)
+        else:
+            if recipient_file.exists():recipient=recipient_file.read_text(encoding='utf-8').strip()
+            self.driver=NativeWhatsApp(self.directory/'whatsapp',recipient,os.environ.get('TERMINAL_QR')=='1')
         self.scan_fn=scan_fn
         self.stop_event=threading.Event()
         self.scan_event=threading.Event()
@@ -77,6 +83,11 @@ class LiteApp:
 
     def start(self):
         self.driver.start()
+        request_file=Path(__file__).resolve().parents[1]/'example-request.txt'
+        batch=os.environ.get('EXAMPLE_BATCH') or (request_file.read_text(encoding='utf-8').strip() if request_file.exists() else '')
+        if batch:
+            try:self.queue_examples(batch,require_ready=False)
+            except ValueError:pass
         self.scan_event.set()
         self._thread=threading.Thread(target=self._run,name='scanner-scheduler',daemon=True)
         self._thread.start()
@@ -106,15 +117,15 @@ class LiteApp:
     def queue_test(self):
         with self._lock:
             if not self._enabled:raise ValueError('Zet meldingen eerst aan om een test te versturen.')
-            if not self.driver.ready():raise ValueError('Koppel WhatsApp eerst.')
+            if not self.driver.ready():raise ValueError('De meldingenservice is nog niet klaar.')
             if time.monotonic()-self._last_test<15:raise ValueError('Wacht vijftien seconden tussen testmeldingen.')
             with sqlite3.connect(self.config['database'],timeout=5) as connection:
                 if connection.execute("SELECT COUNT(*) FROM events WHERE kind='test' AND state='queued'").fetchone()[0]:
                     raise ValueError('Er staat al een testmelding klaar.')
                 event_id=hashlib.sha256(secrets.token_bytes(32)).hexdigest()
-                text='Tesla Watcher: de lichte Python-versie is verbonden. Controleer of je telefoon een melding geeft.'
+                text='Tesla Watcher is klaar. Je ontvangt nieuwe Tesla Model S-advertenties vanaf 2022 met prijs, foto en advertentielink.'
                 connection.execute("INSERT INTO events(id,kind,payload,text,created_at) VALUES (?,'test','{}',?,?)",(event_id,text,now()))
-            self._last_test=time.monotonic();self._notice='Testmelding toegevoegd. Controleer je WhatsApp-chat en de telefoonmelding.'
+            self._last_test=time.monotonic();self._notice='Testmelding toegevoegd. Controleer je meldingenapp.'
 
     def relink_whatsapp(self):
         with self._lock:
@@ -137,7 +148,7 @@ class LiteApp:
         if not re.fullmatch(r'[A-Za-z0-9_-]{8,80}',batch):raise ValueError('Ongeldige voorbeeldreeks.')
         with self._lock:
             if not self._enabled:raise ValueError('Zet meldingen eerst aan.')
-            if require_ready and not self.driver.ready():raise ValueError('Koppel WhatsApp en kies je ontvangernummer eerst.')
+            if require_ready and not self.driver.ready():raise ValueError('De meldingenservice is nog niet klaar.')
             queued=[];missing=[]
             with sqlite3.connect(self.config['database'],timeout=10) as connection:
                 if manual and connection.execute("SELECT 1 FROM events WHERE kind='example' AND state IN ('queued','sending') LIMIT 1").fetchone():
@@ -147,12 +158,23 @@ class LiteApp:
                     name=source['name']
                     event_id=hashlib.sha256(('sample:'+batch+':'+name).encode()).hexdigest()
                     if connection.execute('SELECT id FROM events WHERE id=?',(event_id,)).fetchone():continue
-                    selected=None
+                    selected=None;manual_sample=False
                     for raw,seen in connection.execute('SELECT payload,last_seen FROM listings WHERE source=? ORDER BY last_seen DESC,source_id',(name,)):
                         candidate=Listing(**json.loads(raw))
-                        if not reject_reason(candidate,self.config['filters']):selected=candidate;break
+                        if not reject_reason(candidate,self.config['filters']) and candidate.image_url:selected=candidate;break
+                    seed_file=self.directory/'example-seeds.json'
+                    if selected is None and seed_file.exists():
+                        try:
+                            candidate=Listing(**json.loads(seed_file.read_text(encoding='utf-8'))[name])
+                            age=(datetime.now(timezone.utc)-datetime.fromisoformat(candidate.observed_at)).total_seconds()
+                            expected=urlsplit(source.get('url','')).hostname
+                            parsed=urlsplit(candidate.url)
+                            if candidate.source==name and candidate.image_url and not reject_reason(candidate,self.config['filters']) and -300<=age<=86400 and parsed.scheme=='https' and (expected is None or parsed.hostname==expected):
+                                selected=candidate;manual_sample=True
+                        except (ValueError,TypeError,KeyError):pass
                     if selected is None:missing.append(name);continue
-                    text='VOORBEELD — '+name+'\nGeen nieuwe advertentie; voorbeeld uit de laatste opgeslagen scan.\n\n'+message(selected).replace('Nieuwe Tesla Model S','Tesla Model S',1)
+                    text=message(selected,kind='example')
+                    if manual_sample:text+='\n_Eenmalig lokaal opgehaald; scan op host niet beschikbaar._'
                     connection.execute("INSERT INTO events(id,kind,payload,text,created_at) VALUES (?,'example',?,?,?)",(event_id,json.dumps(selected.to_dict()),text,now()))
                     queued.append(name)
             result={'queued':queued,'missing':missing,'batch':batch}
@@ -174,6 +196,9 @@ class LiteApp:
     def flush(self,store):
         with self._lock:enabled=self._enabled
         if not enabled:return 0
+        if self.driver.status().get('driver')=='ntfy':
+            from .ntfy import deliver_ntfy
+            return deliver_ntfy(store,self.driver)
         return deliver_native(store,self.driver)
 
     def _flush_pending(self):
@@ -181,7 +206,7 @@ class LiteApp:
         with self._lock:enabled=self._enabled
         if not enabled:return
         store=Store(self.config['database'],self.config['filters'])
-        try:deliver_native(store,self.driver)
+        try:self.flush(store)
         finally:store.close()
 
     def _delivery_loop(self):
@@ -320,12 +345,19 @@ def render(status):
     pairing+='<form method="post" action="/whatsapp/relink"><button>Opnieuw koppelen (bestaande sessie wissen)</button></form>'
     recipient_form='<p>Ontvangernummer opgeslagen.</p>' if w.get('recipient_configured',False) else '<p>Vul je eigen ontvangernummer met landcode in om meldingen te ontvangen.</p>'
     recipient_form+='<form method="post" action="/recipient"><label>Jouw ontvangernummer <input name="number" type="tel" placeholder="31612345678" pattern="[+0-9 ]{8,20}" required autocomplete="tel"></label><button>Nummer opslaan</button></form>'
+    ntfy=w.get('driver')=='ntfy'
+    heading='ntfy instellen' if ntfy else 'WhatsApp koppelen'
+    instructions='Installeer de ntfy-app, kies Abonneren en vul onderstaande server en topic in. Sta meldingen toe op je telefoon.' if ntfy else 'WhatsApp → Instellingen → Gekoppelde apparaten → Apparaat koppelen.'
+    help_text='De topicnaam is de toegang tot je meldingen. Bewaar die voor jezelf. Een foto wordt als bijlage meegestuurd; tik op de melding om de advertentie te openen.' if ntfy else 'Berichten aan je eigen gekoppelde account zijn uitgaand en geven normaal geen pushmelding.'
+    if ntfy:
+        pairing='<p><strong>Server:</strong> '+escape(w['server'])+'</p><p><strong>Topic:</strong> <code>'+escape(w['topic'])+'</code></p><p><a href="'+escape(w['subscribe_url'],quote=True)+'" target="_blank" rel="noreferrer">Open mijn ntfy-meldingen</a></p>'
+        recipient_form=''
     reviews=''
     for event in status['uncertain']:
-        reviews+='<details><summary>Onzekere verzending — controleer je WhatsApp-chat</summary><pre>'+escape(event['text'])+'</pre><form method="post" action="/resolve"><input type="hidden" name="id" value="'+escape(event['id'])+'"><button name="decision" value="sent">Staat al in mijn chat</button><button name="decision" value="retry">Niet verzonden: opnieuw proberen</button><button name="decision" value="discard">Overslaan</button></form></details>'
+        reviews+='<details><summary>Onzekere verzending — controleer je meldingenapp</summary><pre>'+escape(event['text'])+'</pre><form method="post" action="/resolve"><input type="hidden" name="id" value="'+escape(event['id'])+'"><button name="decision" value="sent">Al ontvangen</button><button name="decision" value="retry">Niet verzonden: opnieuw proberen</button><button name="decision" value="discard">Overslaan</button></form></details>'
     toggle='off' if status['notifications'] else 'on'
     label='Meldingen pauzeren' if status['notifications'] else 'Meldingen aanzetten'
-    return '''<!doctype html><html lang="nl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="5"><title>Tesla Watcher</title><style>body{font:16px system-ui;color:#161616;background:#f5f5f7;max-width:1080px;margin:32px auto;padding:16px}section{background:white;padding:24px;border-radius:20px;margin:16px 0}h1{font-size:36px;margin:0}.qr{max-width:280px;width:100%}button{border:0;background:#0071e3;color:white;border-radius:10px;padding:10px 16px;cursor:pointer;margin:4px}form{display:inline}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:10px 6px;border-bottom:1px solid #eee}pre{white-space:pre-wrap;overflow-wrap:anywhere}.scroll{overflow-x:auto}.muted{color:#666}</style><h1>Tesla Watcher</h1><p class="muted">Nieuwe Tesla Model S-advertenties vanaf 2022 · elke tien minuten</p><section><h2>WhatsApp koppelen</h2><p>WhatsApp → Instellingen → Gekoppelde apparaten → Apparaat koppelen.</p>'''+pairing+recipient_form+'<p>'+escape(w.get('error',''))+'''</p><form method="post" action="/test"><button>Stuur testmelding</button></form><form method="post" action="/examples"><button>Stuur één Tesla per bron</button></form><p class="muted">Berichten aan je eigen gekoppelde account zijn uitgaand en geven normaal geen pushmelding. Gebruik een ander WhatsApp-account als afzender voor inkomende meldingen.</p></section><section><h2>Scanner</h2><p>'''+escape(status['notice'])+'</p><p>'+('Scan loopt.' if status['active'] else 'Volgende scan over '+str(status['next_scan_in'])+' seconden.')+'</p><form method="post" action="/scan"><button>Nu scannen</button></form><form method="post" action="/notifications/'+toggle+'"><button>'+label+'</button></form><p>Wachtrij: '+escape(json.dumps(status['events']))+'</p><div class="scroll"><table><tr><th>Bron</th><th>Status</th><th>Advertenties</th><th>Laatste succes (UTC)</th><th>Fout</th></tr>'+rows+'</table></div>'+reviews+'</section></html>'
+    return '''<!doctype html><html lang="nl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="5"><title>Tesla Watcher</title><style>body{font:16px system-ui;color:#161616;background:#f5f5f7;max-width:1080px;margin:32px auto;padding:16px}section{background:white;padding:24px;border-radius:20px;margin:16px 0}h1{font-size:36px;margin:0}.qr{max-width:280px;width:100%}button{border:0;background:#0071e3;color:white;border-radius:10px;padding:10px 16px;cursor:pointer;margin:4px}form{display:inline}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:10px 6px;border-bottom:1px solid #eee}pre{white-space:pre-wrap;overflow-wrap:anywhere}.scroll{overflow-x:auto}.muted{color:#666}</style><h1>Tesla Watcher</h1><p class="muted">Nieuwe Tesla Model S-advertenties vanaf 2022 · elke tien minuten</p><section><h2>'''+escape(heading)+'''</h2><p>'''+instructions+'''</p>'''+pairing+recipient_form+'<p>'+escape(w.get('error',''))+'''</p><form method="post" action="/test"><button>Stuur testmelding</button></form><form method="post" action="/examples"><button>Stuur één Tesla per bron</button></form><p class="muted">'''+escape(help_text)+'''</p></section><section><h2>Scanner</h2><p>'''+escape(status['notice'])+'</p><p>'+('Scan loopt.' if status['active'] else 'Volgende scan over '+str(status['next_scan_in'])+' seconden.')+'</p><form method="post" action="/scan"><button>Nu scannen</button></form><form method="post" action="/notifications/'+toggle+'"><button>'+label+'</button></form><p>Wachtrij: '+escape(json.dumps(status['events']))+'</p><div class="scroll"><table><tr><th>Bron</th><th>Status</th><th>Advertenties</th><th>Laatste succes (UTC)</th><th>Fout</th></tr>'+rows+'</table></div>'+reviews+'</section></html>'
 
 
 def main():
@@ -340,13 +372,10 @@ def main():
     directory=Path(os.environ.get('DATA_DIR',str(root/'data'))).resolve()
     directory.mkdir(parents=True,exist_ok=True,mode=0o700)
     if args.check:
-        from neonize.client import NewClient
-        import importlib.metadata
-        print(json.dumps({'python_config':'ok','whatsapp_driver':'neonize','neonize_version':importlib.metadata.version('neonize'),
-                          'browser_required':False,'node_required':False,'sources':len(config['sources']),'max_workers':config.get('max_workers')}))
+        print(json.dumps({'python_config':'ok','notification_transport':config['notifications'].get('transport'),'browser_required':False,'node_required':False,'sources':len(config['sources']),'max_workers':config.get('max_workers')}))
         return
     recipient=os.environ.get('WHATSAPP_TO','').strip()
-    if recipient and not re.fullmatch(r'\+?\d{8,15}',recipient):raise SystemExit('WHATSAPP_TO: gebruik je ontvangernummer inclusief landcode, alleen cijfers.')
+    if config['notifications'].get('transport')!='ntfy' and recipient and not re.fullmatch(r'\+?\d{8,15}',recipient):raise SystemExit('WHATSAPP_TO: gebruik je ontvangernummer inclusief landcode, alleen cijfers.')
     password=password_for(directory,os.environ.get('ADMIN_PASSWORD') or os.environ.get('BRIDGE_TOKEN'))
     app=LiteApp(config,directory,password,recipient)
     port=int(os.environ.get('PORT') or os.environ.get('SERVER_PORT') or '8080')
@@ -361,7 +390,7 @@ def main():
     def stop(_signal,_frame):
         threading.Thread(target=server.shutdown,daemon=True).start()
     for sig in (signal.SIGINT,signal.SIGTERM):signal.signal(sig,stop)
-    print(f'Tesla Watcher gestart op poort {port}. Web-login: admin. Koppel WhatsApp via de beveiligde webpagina.',flush=True)
+    print(f'Tesla Watcher gestart op poort {port}. Web-login: admin. Open de beveiligde webpagina om ntfy in te stellen.',flush=True)
     try:server.serve_forever(poll_interval=.5)
     finally:
         server.server_close();app.stop()

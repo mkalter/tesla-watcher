@@ -185,12 +185,20 @@ class NativeWhatsApp:
             delay=min(delay*2,120)
 
     def send(self,text):
+        return self._send(text)
+
+    def send_photo(self,text,photo):
+        if not isinstance(photo,bytes) or not photo:raise ValueError('Photo bytes required')
+        if len(text)>1024:raise ValueError('Photo caption exceeds WhatsApp limit')
+        return self._send(text,photo)
+
+    def _send(self,text,photo=None):
         if not isinstance(text,str) or not text.strip() or len(text)>6000:
             raise ValueError('WhatsApp text must contain 1–6000 characters')
         with self._send_lock:
             if not self.ready() or self._client is None:
                 raise RuntimeError('WhatsApp is not connected')
-            response=self._client.send_message(self.recipient,text,link_preview=False)
+            response=self._client.send_image(self.recipient,photo,caption=text) if photo is not None else self._client.send_message(self.recipient,text,link_preview=False)
             message_id=getattr(response,'ID','')
             if not message_id:
                 raise RuntimeError('WhatsApp returned no server message ID')
@@ -217,13 +225,25 @@ def deliver_native(store,driver,clock=None,max_batch=20,pause=2):
     sent=0
     for event in store.pending(clock)[:max_batch]:
         if not driver.ready():break
+        try:payload=json.loads(event['payload'] or '{}')
+        except (TypeError,json.JSONDecodeError):payload={}
+        photo=None
+        if payload.get('image_url'):
+            try:
+                from .media import fetch_photo
+                photo=fetch_photo(payload['image_url'])
+            except Exception as exc:
+                # No WhatsApp request has started: downloading can safely retry.
+                store.set_event(event['id'],'queued','Photo download failed: '+type(exc).__name__,clock+300)
+                continue
         # Persist the attempt BEFORE crossing the network. Never automatically retry
         # an outcome that might already have reached the WhatsApp server.
         with store.db:
             claimed=store.db.execute("UPDATE events SET state='sending',attempts=attempts+1 WHERE id=? AND state='queued'",(event['id'],)).rowcount
         if not claimed:continue
         try:
-            driver.send(event['text'])
+            if photo is None:driver.send(event['text'])
+            else:driver.send_photo(event['text'],photo)
             store.set_event(event['id'],'sent')
             try:source=json.loads(event['payload'] or '{}').get('source','test')
             except (TypeError,json.JSONDecodeError):source='unknown'

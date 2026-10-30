@@ -70,3 +70,11 @@ Ruwe websitecaptures, WhatsApp-sessies en lokale databases zijn niet meegeüploa
 De lichte versie is op KataBump met Python 3.12 geïnstalleerd en gestart. In de serverconsole zijn CarAPIS-pagina’s succesvol uitgelezen en is QR-generatie door de echte ongekoppelde WhatsApp-client gemeld. Geobserveerd geheugengebruik circa 78 MiB zonder HTTPS-tunnel en circa 109 MiB tijdens starten met tunnel; dit zijn momentopnames, geen piek- of duurmeting en geen gekoppelde sessie.
 
 De directe IP-verbinding gaf bij de gebruiker `ERR_CONNECTION_REFUSED`. Er is daarom een optionele Cloudflare Quick Tunnel voor HTTPS toegevoegd, met uitsluitend lokale HTTP-binding. De tunnel genereerde een publieke HTTPS-link. De externe healthcheck in onze cloudbrowser kreeg echter `Your request was blocked`; externe bereikbaarheid en de interactieve web-login zijn daardoor nog niet bevestigd. De WhatsApp-QR is niet gescand en er is geen echt bericht verstuurd.
+
+## Overstap naar ntfy met foto's
+
+Standaardtransport is ntfy; WhatsApp wordt niet gestart. 81 Python-tests slagen, inclusief echte foto-extractievelden, veilige CDN-validatie, JPEG-verkleining, vaste berichtopbouw, ntfy-upload, wachtrij, rate limits en onzekere uitkomsten. De echte ntfy.sh-service heeft een testbericht met advertentiefoto geaccepteerd; zie `reports/ntfy-live-validation.json`. Dit bevestigt geen push op een telefoon die nog niet is geabonneerd.
+
+Een ntfy-topic wordt privé gemaakt en niet op GitHub gezet. Foto's worden als verkleinde JPEG geüpload zodat de ontvanger niet afhankelijk is van een extern afbeeldingsformaat of een afbeeldingslink zonder extensie.
+
+De mobiele.de-zoekopdracht is lokaal verbeterd en volledig uitgelezen (73 passende auto's, vier pagina's). Op de KataBump-host gaf die bron nog HTTP 403. Een afzonderlijk actueel voorbeeld kan buiten de host zijn opgehaald; dat is expliciet als eenmalig voorbeeld gemarkeerd en verandert de bronstatus of beginstand niet.

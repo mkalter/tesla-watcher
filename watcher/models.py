@@ -28,6 +28,7 @@ class Listing:
     is_wanted: bool = False
     is_lease: bool = False
     damaged: bool = False
+    image_url: str = ''
 
     def to_dict(self):
         return asdict(self)
@@ -70,14 +71,18 @@ def reject_reason(x, filters):
 
 
 def message(x, kind='new', previous_price=None):
-    euro = lambda v: (('€' if x.currency=='EUR' else x.currency) + ' ' + f'{v:,}'.replace(',', '.')) if v is not None else 'prijs onbekend'
-    km = f'{x.mileage:,}'.replace(',', '.') + ' km' if x.mileage is not None else 'km onbekend'
-    label = 'Nieuwe Tesla Model S' if kind == 'new' else 'Prijsdaling Tesla Model S'
-    lines = [label, x.title, f'{x.year} ({x.year_basis}) · {euro(x.price)} · {km}',
-             f'{x.country} · {x.source}']
-    if previous_price is not None:
-        lines.append(f'Was {euro(previous_price)}')
-    if x.location:
-        lines.append(x.location)
-    lines.extend([x.url, f'Gezien: {x.observed_at}'])
+    clean=lambda value:' '.join(re.sub(r'[*_~`]', '',str(value)).split())[:90]
+    money=lambda value:(('€' if x.currency=='EUR' else clean(x.currency))+' '+f'{value:,}'.replace(',','.')) if value is not None else 'Prijs op aanvraag'
+    variant='Plaid' if re.search(r'\bplaid\b',x.title,re.I) else 'Long Range' if re.search(r'long[ -]*range|\blr\b',x.title,re.I) else ''
+    title='Tesla Model S'+(' '+variant if variant else '')
+    countries={'NL':'Nederland','BE':'België','DE':'Duitsland','SE':'Zweden','NO':'Noorwegen','DK':'Denemarken','FR':'Frankrijk','US':'Verenigde Staten'}
+    location=' · '.join(v for v in [clean(x.location),countries.get(x.country,clean(x.country))] if v) or 'Niet vermeld'
+    sources={'carapis':'CarAPIS','autoscout_nl':'AutoScout24 NL','autoscout_be':'AutoScout24 BE','autoscout_de':'AutoScout24 DE','marktplaats':'Marktplaats','gaspedaal':'Gaspedaal','mobile':'mobile.de','2dehands':'2dehands.be','kleinanzeigen':'Kleinanzeigen'}
+    year=str(x.year) if x.year else 'Niet vermeld'
+    if x.year_basis=='first_registration':year+=' (eerste toelating)'
+    mileage=f'{x.mileage:,}'.replace(',','.')+' km' if x.mileage is not None else 'Niet vermeld'
+    lines=[f'*{title}*',f'*{money(x.price)}*','',f'Jaar: {year}',f'Kilometerstand: {mileage}',f'Locatie: {location}',f'Bron: {sources.get(x.source,clean(x.source))}']
+    if previous_price is not None:lines+=['',f'Prijs verlaagd: {money(previous_price)} → {money(x.price)}']
+    lines+=['','Bekijk advertentie:',x.url]
+    if kind=='example':lines+=['','_Voorbeeldbericht · geen nieuwe advertentie_']
     return '\n'.join(lines)

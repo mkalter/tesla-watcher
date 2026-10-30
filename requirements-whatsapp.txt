@@ -1,0 +1,3 @@
+# Optional legacy transport and SDK regression tests only.
+-c requirements.lock
+neonize==0.5.2

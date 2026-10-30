@@ -1,0 +1,12 @@
+{
+  "event": "message",
+  "title": "Tesla Model S Plaid \u00b7 \u20ac 94.000",
+  "attachment": {
+    "name": "tesla-model-s.jpg",
+    "type": "image/jpeg",
+    "size": 241154
+  },
+  "accepted": true,
+  "photo_upload_bytes": 241154,
+  "phone_push_verified": false
+}

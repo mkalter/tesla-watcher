@@ -25,7 +25,7 @@ def load_config(path):
     names=[x['name'] for x in sources]
     if len(set(names))!=len(names):
         raise ValueError('Duplicate source names')
-    if c.get('notifications',{}).get('enabled',False) and c['notifications'].get('transport')!='native' and not c['notifications'].get('bridge_url'):
+    if c.get('notifications',{}).get('enabled',False) and c['notifications'].get('transport') not in ('native','ntfy') and not c['notifications'].get('bridge_url'):
         raise ValueError('notifications.bridge_url is required')
     if not isinstance(c.get('max_workers',3),int) or not 1<=c.get('max_workers',3)<=3:
         raise ValueError('max_workers must be between 1 and 3')
@@ -87,7 +87,11 @@ def scan(c,args,notifier=None):
           notification_error=False
           if c.get('notifications',{}).get('enabled') and not args.no_send:
                 try:
-                    sent=notifier(store) if notifier else deliver(store,c['notifications'])
+                    if notifier:sent=notifier(store)
+                    elif c['notifications'].get('transport')=='ntfy':
+                        from .ntfy import Ntfy,deliver_ntfy
+                        sent=deliver_ntfy(store,Ntfy(Path(c['database']).parent))
+                    else:sent=deliver(store,c['notifications'])
                     print(json.dumps({'sent':sent}),flush=True)
                 except Exception as exc:
                     notification_error=True
@@ -178,7 +182,7 @@ def main(argv=None):
                 state={'sent':'sent','retry':'queued','discard':'discarded'}[args.decision]
                 if not store.db.execute('SELECT id FROM events WHERE id=?',(args.id,)).fetchone():
                     raise ValueError('Unknown event ID')
-                if args.decision=='retry' and c['notifications'].get('transport')!='native':
+                if args.decision=='retry' and c['notifications'].get('transport') not in ('native','ntfy'):
                     token=os.environ.get('BRIDGE_TOKEN','')
                     if not token:raise ValueError('BRIDGE_TOKEN required to reconcile the bridge ledger')
                     req=urllib.request.Request(c['notifications']['bridge_url'].rstrip('/')+'/resolve',

@@ -1,19 +1,11 @@
-"""Generate local settings; also preserve compatibility with the legacy Docker setup. Does not send or deploy anything."""
+"""Create private local web settings; ntfy topic is generated on first start."""
 from pathlib import Path
-import json,secrets,re
+import secrets
 root=Path(__file__).resolve().parents[1]
 path=root/'.env'
 if path.exists():
- print('.env already exists; keeping existing settings.')
+    print('.env bestaat al; bestaande instellingen blijven behouden.')
 else:
- number=input('Your receiving WhatsApp number, with country code (e.g. 31612345678): ').strip().lstrip('+').replace(' ','')
- if not re.fullmatch(r'\d{8,15}',number):raise SystemExit('Invalid number: use digits and country code only.')
- secret=secrets.token_urlsafe(36)
- path.write_text('ADMIN_PASSWORD='+secret+'\nBRIDGE_TOKEN='+secret+'\nWHATSAPP_TO='+number+'\n')
- path.chmod(0o600)
- print('Created .env. It contains your private pairing password; do not share it.')
-config=root/'config.docker.json'
-if not config.exists():
- c=json.loads((root/'config.json').read_text());c['notifications']={'enabled':False,'bridge_url':'http://whatsapp:3000'}
- config.write_text(json.dumps(c,indent=2))
- print('Created config.docker.json. WhatsApp sending stays disabled until you finish pairing and testing.')
+    path.write_text('ADMIN_PASSWORD='+secrets.token_urlsafe(36)+'\nNTFY_SERVER=https://ntfy.sh\n',encoding='utf-8')
+    path.chmod(0o600)
+    print('Private .env gemaakt. Login als admin met het wachtwoord uit .env. De ntfy-topic staat na starten in het webscherm.')

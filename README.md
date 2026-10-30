@@ -1,12 +1,10 @@
-# Tesla Watcher — Python
+# Tesla Watcher — ntfy
 
-Elke tien minuten zoeken naar nieuwe Tesla Model S-advertenties vanaf 2022, met WhatsApp via een gekoppeld apparaat. De standaardinstallatie gebruikt één Python-proces: geen Chrome, Node.js, Docker of betaalde WhatsApp-API.
+Elke tien minuten zoeken naar nieuwe Tesla Model S-advertenties vanaf 2022. Meldingen gaan via **ntfy**, met een echte advertentiefoto, een vaste opbouw en een knop naar de advertentie. De standaardversie gebruikt geen WhatsApp-account, Chrome, Node of Docker.
 
-Bronnen: **CarAPIS-website**, AutoScout24 NL/BE/DE, Marktplaats, Gaspedaal, mobile.de, 2dehands.be en Kleinanzeigen. CarAPIS wordt als website gelezen; er wordt geen CarAPIS-API gebruikt.
+Bronnen: CarAPIS-website (geen CarAPIS-API), AutoScout24 NL/BE/DE, Marktplaats, Gaspedaal, mobile.de, 2dehands.be en Kleinanzeigen.
 
-## Snel starten
-
-Python **3.12 op Linux x86_64** is getest. Maak lokaal desgewenst een virtualenv en voer uit:
+## Starten
 
 ```sh
 pip install -r requirements.txt
@@ -15,81 +13,70 @@ python tools/setup.py
 python main.py
 ```
 
-`setup.py` vraagt je ontvangernummer en maakt een lokaal `.env`-bestand. Open `http://localhost:8080`, log in als `admin` met het wachtwoord uit `.env`, en scan de QR via **WhatsApp → Instellingen → Gekoppelde apparaten**. Klik daarna op **Stuur testmelding**. Gebruik voor een openbaar bereikbare installatie de HTTPS-link van je host; Basic Auth en de QR moeten via HTTPS worden geopend.
+Open je webscherm op de toegewezen hostingpoort (standaard 8080). Login: `admin`, met je bestaande `ADMIN_PASSWORD` of het automatisch gemaakte wachtwoord in `data/admin-password.txt`. Gebruik HTTPS voor een publiek bereikbare installatie.
 
-Je telefoon moet WhatsApp kunnen koppelen. Neonize gebruikt het onofficiële linked-device-protocol; WhatsApp kan de verbinding verbreken of wijzigingen doorvoeren. De code gebruikt geen browser. Een apart verzendnummer is handig: berichten aan je eigen account geven mogelijk geen pushmelding. Test dit op je telefoon.
+## ntfy op je telefoon
 
-## Gratis hosting zonder betaalkaart
+1. Installeer de [ntfy-app voor Android of iOS](https://docs.ntfy.sh/subscribe/phone/).
+2. Open het Tesla Watcher-webscherm. Onder **ntfy instellen** staan de server (`https://ntfy.sh`) en jouw automatisch gemaakte topicnaam.
+3. Kies in de ntfy-app **Abonneren / Subscribe**, vul de server en topic in en sta telefoonmeldingen toe.
+4. Klik in het webscherm op **Stuur testmelding**. Met **Stuur één Tesla per bron** ontvang je echte passende voorbeelden, met foto, uit je opgeslagen scans.
 
-Dezelfde code kan bij een Python-host of op een computer thuis draaien. Er is geen speciale hosting-API nodig.
+Een account of betaalkaart is voor deze opzet niet nodig. Op de gratis publieke ntfy-server is de onvoorspelbare topicnaam je toegang: iedereen die hem kent kan lezen en publiceren. De topic wordt privé opgeslagen in `data/ntfy-topic.txt` en staat nooit in de repository. Er gelden ntfy-limieten; bij HTTP 429 blijft een melding in de wachtrij voor later.
 
-| Optie | Volgens aanbieder | Aandachtspunt |
-| --- | --- | --- |
-| [Enzonic Python](https://www.enzonic.com/python) | Gratis, zonder kaart, 512 MB RAM, 10 GB SSD, continu actief | Gratis capaciteit is beperkt; controleer het aanbod bij aanmaken |
-| [KataBump](https://katabump.com/) | Gratis Python, zonder kaart | [Elke vier dagen handmatig verlengen](https://docs.katabump.com/hosting/renew-your-server/); anders opschorting en een dag later verwijdering |
-| Eigen pc / mini-pc | Geen hostingabonnement of kaart | Computer moet aanblijven; stroom en internet zijn voor eigen rekening |
+De server bevestigt dat een melding is aangenomen. Of jouw telefoon een push laat zien, hangt ook af van het app-abonnement, toestemming en telefooninstellingen. De eerste scan van iedere bron vormt een stille beginstand; alleen latere nieuwe advertenties geven gewone meldingen.
 
-Aanbod gecontroleerd op 30 oktober 2026. De lichte versie is op **KataBump geïnstalleerd en gestart**; de CarAPIS-scan en ongekoppelde WhatsApp-client werken daar. Enzonic is niet getest. De externe HTTPS-test werd in onze testbrowser geblokkeerd. Echte WhatsApp-aflevering moet na jouw koppeling worden gecontroleerd. Capaciteit en toegang tot de overige autosites kunnen verschillen. Gratis hosting geeft geen gegarandeerde scanfrequentie of uptime.
+## Vast meldingsformaat
 
-### Instellingen in het hostingpaneel
+Titel: **Tesla Model S Long Range · € 49.950**
 
-1. Maak een **Python 3.12**-server en importeer deze GitHub-repository. Kies geen Docker-template voor de lichte versie.
-2. Installatiecommando: `pip install -r requirements.txt` (bij automatische installatie van requirements is dit al geregeld).
-3. Startcommando: `python main.py`.
-4. Vul je **eigen** ontvangernummer in het webscherm in (met landcode), of stel vooraf `WHATSAPP_TO` in, bijvoorbeeld `31612345678`.
-5. Stel `ADMIN_PASSWORD` in op een zelfgekozen wachtwoord van minstens zestien tekens. De webgebruikersnaam is `admin`.
-6. Gebruik de toegewezen `PORT` of `SERVER_PORT`. Beide worden automatisch gelezen; standaard is 8080. Open de HTTPS-webpagina en koppel WhatsApp met de QR.
-7. Klik **Stuur testmelding** en controleer de chat én een pushmelding. De eerste succesvolle scan van elke bron wordt stil als beginstand opgeslagen. Alleen latere nieuwe advertenties geven meldingen.
+Bericht:
 
-Als de host alleen een privéconsole heeft, zet `TERMINAL_QR=1` om de QR daar te tonen. Dit werkt voor tekst-QR's; het webscherm blijft de standaard. Toon de console en QR niet publiek.
+```text
+Jaar: 2023
+Kilometerstand: 48.000 km
+Locatie: München · Duitsland
+Bron: mobile.de
+```
 
-Bewaar de map **`data/` op blijvende schijf**. Daar staan de WhatsApp-sessie, database, wachtrij en scanarchieven. Zonder deze map moet je opnieuw koppelen en wordt opnieuw een beginstand opgebouwd. Maak een privébackup, en zet deze map of `.env` nooit op GitHub. Eén actieve instantie per data-map; geen automatische horizontale schaalvergroting.
+Bijlage: de foto uit precies die advertentie. Actie: **Bekijk advertentie**. Voorbeelden zijn als voorbeeld gemarkeerd. Prijs en foto worden niet verzonnen; onbekende gegevens blijven herkenbaar onbekend. De weergave van de fotobijlage verschilt per ntfy-app en telefoon. De gratis ntfy-attachmentcache bewaart uploads standaard drie uur; de advertentielink blijft in het bericht.
 
-### HTTPS op KataBump zonder domein
+## Hosting en instellingen
 
-De KataBump-installatie gebruikt optioneel `ENABLE_HTTPS_TUNNEL=1` en `HOST=127.0.0.1`. Daarmee start de app Cloudflare’s officiële `cloudflared`-client met SHA256-controle en een gratis tijdelijke HTTPS-link. Er is geen Cloudflare-account of betaalkaart nodig. De link staat in de console en in `data/dashboard-url.txt`. Je webwachtwoord staat bij automatisch aanmaken in `data/admin-password.txt`; open dit alleen zelf via het beveiligde KataBump-bestandenpaneel. De gebruikersnaam is `admin`.
+Dezelfde code draait op een Python-host, eigen pc of mini-pc. Startcommando: `python main.py`. `PORT` en `SERVER_PORT` worden automatisch gelezen. Op KataBump moet je het gratis abonnement [elke vier dagen handmatig verlengen](https://docs.katabump.com/hosting/renew-your-server/).
 
-Een Quick Tunnel is bedoeld voor testen: de URL verandert na herstart en er is geen uptimegarantie. De scanner en WhatsApp werken door als alleen de tunnel uitvalt. Voor een blijvende web-URL is later een vaste HTTPS-proxy of een beheerde Cloudflare Tunnel nodig. De tunnel verbruikt extra RAM en schijfruimte. Zie [Cloudflare-documentatie](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
-
-## Configuratie en werking
-
-`main.py` gebruikt `config.light.json`: één bron tegelijk, HTTP-verzoeken, tienminuteninterval, gecomprimeerde snapshots en zeven dagen snapshotbewaring. Er is geen browserfallback in deze modus. Een 403, captcha, timeout of gewijzigde HTML wordt als bronfout opgeslagen; een mislukte scan geldt niet als lege zoeklijst. Bekijk de bronstatus in het webscherm.
-
-Instelbare omgevingsvariabelen:
-
-| Naam | Betekenis |
+| Variabele | Betekenis |
 | --- | --- |
-| `WHATSAPP_TO` | Optioneel vooraf ingesteld ontvangernummer inclusief landcode |
-| `ADMIN_PASSWORD` | Wachtwoord webscherm, minstens zestien tekens |
-| `PORT` / `SERVER_PORT` | HTTP-poort van de host |
-| `DATA_DIR` | Blijvende opslagmap, standaard `data/` naast de code |
-| `CONFIG_FILE` | Alternatieve configuratie, standaard `config.light.json` |
-| `SEND_NOTIFICATIONS` | `false` om verzending bij een verse installatie te pauzeren; daarna blijft de webkeuze opgeslagen |
-| `TERMINAL_QR` | Alleen `1` als je QR in een privéconsole wilt |
+| `ADMIN_PASSWORD` | Wachtwoord webscherm, minstens 16 tekens |
+| `NTFY_TOPIC` | Optioneel een eigen lange willekeurige topicnaam; anders automatisch gemaakt |
+| `NTFY_SERVER` | `https://ntfy.sh` |
+| `PORT` / `SERVER_PORT` | Hostingpoort, standaard 8080 |
+| `HOST` | HTTP-bindadres, standaard 0.0.0.0 |
+| `DATA_DIR` | Blijvende opslag, standaard `data/` naast de code |
+| `CONFIG_FILE` | Standaard `config.light.json` |
+| `ENABLE_HTTPS_TUNNEL` | Optioneel `1` voor een tijdelijke Cloudflare Quick Tunnel |
 
-De scanner loopt zonder overlappende scans. Als een scan langer dan tien minuten duurt, volgt de volgende scan na voltooiing; er is geen garantie op precies tien minuten. De verzendworker werkt onafhankelijk van de scanner.
+Bewaar `data/` op blijvende schijf. Deze map bevat de database, wachtrij, topic en scanarchieven. Eén actieve instantie per map. Je kunt meldingen in het webscherm pauzeren; de wachtrij blijft behouden. Gecomprimeerde snapshots blijven standaard zeven dagen bewaard.
 
-Bouwjaar wordt gebruikt waar beschikbaar, anders eerste registratie. Wil je alleen bevestigd bouwjaar, zet `allow_first_registration` op `false` en begin met een nieuwe data-map. Wijzigingen aan filters vereisen een nieuwe database om een betrouwbare beginstand te leggen.
+Een optionele Quick Tunnel geeft een tijdelijke HTTPS-link zonder Cloudflare-account. De link staat in de console en `data/dashboard-url.txt`, verandert na herstart en heeft geen uptimegarantie. Zie de [Cloudflare-documentatie](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
 
-Advertenties blijven over herstarts heen bekend. Dezelfde auto wordt tussen bronnen alleen samengevoegd bij sterke identifiers zoals VIN of kenteken. Een auto zonder zulke identifiers kan op meerdere websites een melding geven. Prijsveranderingen geven standaard geen melding.
+## Websitefouten en dekking
 
-Meldingen blijven bij een verbroken verbinding in de wachtrij. Bij een onderbroken of onduidelijke verzending krijgt het event de status **uncertain**, zodat geen automatische dubbele melding ontstaat. Controleer je chat en kies in het webscherm of de melding al is verstuurd, opnieuw mag worden geprobeerd of moet worden overgeslagen. Een bevestigde server-ID bewijst geen pushmelding op je telefoon.
+Een 403, captcha, timeout of onbekende HTML wordt als bronfout opgeslagen en geldt niet als lege zoeklijst. Fouten staan in het webscherm. Er wordt geen captcha omzeild. Een scan die langer dan tien minuten duurt, overlapt niet met een volgende scan.
 
-RAM hangt af van paginaformaat en de gekoppelde WhatsApp-sessie. De Go-runtime heeft een zachte geheugenrichtwaarde van 96 MiB, geen harde limiet voor het hele proces. Test het werkelijke gebruik op je host na koppelen. Beschikbaarheid en websitevoorwaarden verschillen per bron; de code probeert geen captcha te omzeilen.
+**mobile.de:** de bijgewerkte gewone zoekopdracht is lokaal volledig getest: vier pagina’s, 73 passende advertenties. Op de gebruikte KataBump-server gaf mobile.de ook daarna nog HTTP 403. De doorlopende mobile.de-scan op die host is daarom niet als werkend bevestigd. Een eenmalig buiten de host opgehaald voorbeeld is geen bewijs van werkende doorlopende monitoring en wordt apart als zodanig gemarkeerd.
 
-## Tests en backtest
+Bouwjaar wordt gebruikt waar beschikbaar, anders eerste toelating. `allow_first_registration=false` vereist bevestigd bouwjaar. Wijzig je filters, gebruik dan een nieuwe database voor een schone beginstand. Deduplicatie tussen websites gebruikt sterke identifiers zoals VIN of kenteken; zonder zulke identifiers kan dezelfde auto via twee bronnen worden gemeld.
+
+Bij een expliciete ntfy-afwijzing blijft een melding in de wachtrij. Bij een netwerktimeout is de uitkomst mogelijk onzeker: de app probeert dat event niet blind opnieuw. Controleer ntfy en beoordeel het event in het webscherm.
+
+## Tests
 
 ```sh
+# Optionele oude WhatsApp-SDK is alleen nodig voor de bestaande regressietests.
+pip install -r requirements-whatsapp.txt
 python -m unittest discover -s tests -v
 python tools/backtest.py
 ```
 
-De 30-daagse backtest is een **synthetische simulatie**, geen historische marktbacktest. Voor een echte replay van je eigen opgeslagen snapshots:
-
-```sh
-python -m watcher.cli replay data/snapshots --output reports/my-replay.json
-```
-
-Zie [TESTRESULTATEN.md](TESTRESULTATEN.md) voor eerdere live bronmetingen en de beperkingen daarvan. Automatische tests bewijzen de scanner, wachtrij, herstarts, webauthenticatie en SDK-initialisatie; echte WhatsApp-aflevering vereist jouw koppeling en telefooncontrole.
-
-De eerdere installatie met Chrome/Node en Docker blijft als alternatief beschikbaar in [docs/LEGACY_DOCKER.md](docs/LEGACY_DOCKER.md). Die is zwaarder en wordt niet gestart door `python main.py`.
+De dertigdaagse backtest is een synthetische simulatie, geen historische marktbacktest. Zie [TESTRESULTATEN.md](TESTRESULTATEN.md). Oude WhatsApp-/Docker-code blijft beschikbaar voor compatibiliteit, maar de standaardconfiguratie start die niet. Bestaande WhatsApp-sessiebestanden worden niet automatisch verwijderd.

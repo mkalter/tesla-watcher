@@ -117,6 +117,17 @@ def scalar(x):
     return str(x) if x is not None else ''
 
 
+def image_url(value,base):
+    if isinstance(value,list):
+        return next((url for item in value if (url:=image_url(item,base))),'')
+    if isinstance(value,dict):
+        return image_url(first(value,'url','contentUrl','src','imageUrl','fotoGroot','fotoKlein'),base)
+    if isinstance(value,str):
+        url=urljoin(base,value)
+        return url if urlsplit(url).scheme=='https' else ''
+    return ''
+
+
 def years(value):
     match = re.search(r'(?<!\d)(19\d{2}|20\d{2})(?!\d)', str(value or ''))
     return int(match[1]) if match else None
@@ -204,7 +215,7 @@ def from_record(record, source, observed_at):
                    seller=scalar(seller), vin=scalar(first(r, 'vehicleIdentificationNumber', 'vin')),
                    plate=scalar(first(r, 'licensePlate', 'plate', 'vehicle_no')), location=scalar(location),
                    published_at=scalar(first(r, 'datePosted', 'published_at', 'first_seen_at')),
-                   observed_at=observed_at,
+                   observed_at=observed_at,image_url=image_url(first(r,'image','images','imageUrls','photo','thumbnailUrl'),source['url']),
                    is_wanted=bool(re.search(r'\b(gezocht|gesuch|gesucht|suche|wanted)\b', flags)),
                    is_lease=bool(re.search(r'per maand|/\s*(?:mnd|month|monat)|monthly|lease only|leaseprijs', flags)),
                    damaged=bool(re.search(r'\b(schadeauto|unfallwagen|unfallfahrzeug|bastlerfahrzeug|accident[eé])\b', flags)
@@ -226,6 +237,7 @@ def record_from_card(node, anchor, source):
     if 'tesla' not in title.lower() and 'tesla' in text.lower():
         title = 'Tesla ' + title
     r = {'url': anchor.attrs['href'], 'title': title, 'description': text}
+    r['image']=next((n.attrs.get('src') or n.attrs.get('data-src') for n in node.walk() if n.tag=='img' and 'logo' not in (n.attrs.get('alt','')+' '+n.attrs.get('class','')).lower() and (n.attrs.get('src') or n.attrs.get('data-src'))),'')
     # Prefer semantic markup over prose (battery replacements also mention years).
     for n in node.walk():
         prop = n.attrs.get('itemprop', '')
@@ -398,6 +410,7 @@ def native_extract(nodes, source, observed_at):
             subtitle = field('vehicle-card-subtitle')
             text = card.text()
             r = {'url':card.attrs['href'],'title':title+' '+subtitle}
+            r['image']=next((n.attrs.get('src') for n in card.walk() if n.tag=='img' and n.attrs.get('src')),'')
             y = re.search(r'\b(20\d{2})\b',subtitle)
             r['year'] = int(y[1]) if y else None
             p = re.search(r'([$€£])\s*([\d,.]+)',text)
@@ -430,7 +443,8 @@ def native_extract(nodes, source, observed_at):
                             'title':' '.join(str(general.get(k,'')) for k in ('merknaam','modelnaam','uitvoering')),
                             'year':history.get('bouwjaar'),'mileage':history.get('kilometerstand'),
                             'price':r.get('prijs',{}).get('totaalInclusiefBtw'), 'published_at':r.get('datumGeplaatst'),
-                            'location':seller.get('plaatsnaam'),'seller':seller.get('naamsvermelding')}
+                            'location':seller.get('plaatsnaam'),'seller':seller.get('naamsvermelding'),
+                            'image':r.get('gpFotos',{})}
                     x=from_record(record,source,observed_at)
                     if x:
                         listings.append(x)
