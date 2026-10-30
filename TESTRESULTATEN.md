@@ -73,7 +73,7 @@ De directe IP-verbinding gaf bij de gebruiker `ERR_CONNECTION_REFUSED`. Er is da
 
 ## Overstap naar ntfy met foto's
 
-Standaardtransport is ntfy; WhatsApp wordt niet gestart. 81 Python-tests slagen, inclusief echte foto-extractievelden, veilige CDN-validatie, JPEG-verkleining, vaste berichtopbouw, ntfy-upload, wachtrij, rate limits en onzekere uitkomsten. De echte ntfy.sh-service heeft een testbericht met advertentiefoto geaccepteerd; zie `reports/ntfy-live-validation.json`. Dit bevestigt geen push op een telefoon die nog niet is geabonneerd.
+Standaardtransport is ntfy; WhatsApp wordt niet gestart. 82 Python-tests slagen, inclusief echte foto-extractievelden, veilige CDN-validatie, JPEG-verkleining, vaste berichtopbouw, ntfy-upload, wachtrij, rate limits en onzekere uitkomsten. De echte ntfy.sh-service heeft een testbericht met advertentiefoto geaccepteerd; zie `reports/ntfy-live-validation.json`. Dit bevestigt geen push op een telefoon die nog niet is geabonneerd.
 
 Een ntfy-topic wordt privé gemaakt en niet op GitHub gezet. Foto's worden als verkleinde JPEG geüpload zodat de ontvanger niet afhankelijk is van een extern afbeeldingsformaat of een afbeeldingslink zonder extensie.
 

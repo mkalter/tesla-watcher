@@ -61,3 +61,11 @@ class PhotoMessageTests(unittest.TestCase):
                     self.assertEqual(deliver_native(store,driver,pause=0),0)
                 self.assertEqual(calls[0][1],b'jpeg');self.assertIn('*Tesla Model S',calls[0][0])
             finally:store.close()
+
+class CarapisPriceTests(unittest.TestCase):
+    def test_price_with_nonbreaking_thousands_separator(self):
+        from watcher.parsing import parse_page
+        source={'name':'carapis','kind':'carapis','url':'https://carapis.com/catalog/','link_pattern':r'^https://carapis.com/catalog/tesla/model-s/'}
+        html='<a class="vehicle-card" href="/catalog/tesla/model-s/car"><h3 class="vehicle-card-title">Tesla Model S</h3><p class="vehicle-card-subtitle">Long Range · 2023</p><ul class="vehicle-card-specs">88.099 km Electric</ul><span class="vehicle-card-price">€12\u00a0000</span><span class="vehicle-card-verdict">61% below market</span></a>'
+        items,_,_=parse_page(html,source,T0)
+        self.assertEqual(items[0].price,12000)

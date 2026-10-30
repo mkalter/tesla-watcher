@@ -413,8 +413,11 @@ def native_extract(nodes, source, observed_at):
             r['image']=next((n.attrs.get('src') for n in card.walk() if n.tag=='img' and n.attrs.get('src')),'')
             y = re.search(r'\b(20\d{2})\b',subtitle)
             r['year'] = int(y[1]) if y else None
-            p = re.search(r'([$€£])\s*([\d,.]+)',text)
-            r['price'] = p[2] if p else None
+            price_text=field('vehicle-card-price')
+            if not price_text:
+                price_text=next((n.text().strip() for n in card.walk() if n.tag in ('p','span') and re.fullmatch(r'\s*(?:[$€£]\s*[\d.,\s]+|[\d.,\s]+\s*[$€£])\s*',n.text())),'')
+            p = re.search(r'([$€£])',price_text)
+            r['price'] = amount(price_text) if p else None
             r['currency'] = {'$':'USD','€':'EUR','£':'GBP'}.get(p[1] if p else '', 'UNKNOWN')
             m = re.search(r'([\d, .]+)\s*km',field('vehicle-card-specs'))
             r['mileage'] = m[1] if m else None
