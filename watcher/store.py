@@ -107,7 +107,7 @@ class Store:
                 self.db.execute('''INSERT INTO listings VALUES (?,?,?,?,?,?) ON CONFLICT(source,source_id)
                     DO UPDATE SET car_id=excluded.car_id,payload=excluded.payload,last_seen=excluded.last_seen''',
                     (source, x.source_id, car_id, payload, timestamp, timestamp))
-                if x.price is not None:
+                if x.price is not None and (old is None or old_price!=x.price):
                     self.db.execute('INSERT OR IGNORE INTO prices VALUES (?,?,?,?)', (source,x.source_id,timestamp,x.price))
                 if kind:
                     seed = f'new:{car_id}' if kind == 'new' else f'drop:{source}:{x.source_id}:{old_price}:{x.price}'

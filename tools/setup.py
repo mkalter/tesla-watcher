@@ -1,4 +1,4 @@
-"""Generate local secrets and a Docker config. Does not send or deploy anything."""
+"""Generate local settings; also preserve compatibility with the legacy Docker setup. Does not send or deploy anything."""
 from pathlib import Path
 import json,secrets,re
 root=Path(__file__).resolve().parents[1]
@@ -8,7 +8,8 @@ if path.exists():
 else:
  number=input('Your receiving WhatsApp number, with country code (e.g. 31612345678): ').strip().lstrip('+').replace(' ','')
  if not re.fullmatch(r'\d{8,15}',number):raise SystemExit('Invalid number: use digits and country code only.')
- path.write_text('BRIDGE_TOKEN='+secrets.token_urlsafe(36)+'\nWHATSAPP_TO='+number+'\n')
+ secret=secrets.token_urlsafe(36)
+ path.write_text('ADMIN_PASSWORD='+secret+'\nBRIDGE_TOKEN='+secret+'\nWHATSAPP_TO='+number+'\n')
  path.chmod(0o600)
  print('Created .env. It contains your private pairing password; do not share it.')
 config=root/'config.docker.json'

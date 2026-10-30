@@ -1,5 +1,6 @@
 """Fetching website HTML only: urllib first, optional Playwright rendering."""
 import json
+import gzip
 import time
 import urllib.request
 import urllib.error
@@ -146,12 +147,15 @@ def scan_source(fetcher,source,timestamp,archive_dir=None,capture_html=False):
     return list(listings.values()),pages
 
 
-def archive_snapshot(folder,source,timestamp,listings=None,error=None,pages=0):
+def archive_snapshot(folder,source,timestamp,listings=None,error=None,pages=0,compress=False):
     path=Path(folder)/timestamp[:10]
     path.mkdir(parents=True,exist_ok=True)
     payload={'timestamp':timestamp,'source':source,'status':'error' if error else 'ok',
              'error':str(error) if error else None,'pages':pages,
              'listings':[x.to_dict() for x in listings or []]}
     target=path/(timestamp.replace(':','-')+'-'+source+'.json')
-    target.write_text(json.dumps(payload,ensure_ascii=False,indent=2))
+    if compress:
+        target=target.with_suffix('.json.gz')
+        with gzip.open(target,'wt',encoding='utf-8') as handle:json.dump(payload,handle,ensure_ascii=False)
+    else:target.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8')
     return payload

@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import gzip
 from concurrent.futures import ThreadPoolExecutor,as_completed
 from .models import Listing, now, reject_reason
 from .store import Store
@@ -24,8 +25,10 @@ def load_config(path):
     names=[x['name'] for x in sources]
     if len(set(names))!=len(names):
         raise ValueError('Duplicate source names')
-    if c.get('notifications',{}).get('enabled',False) and not c['notifications'].get('bridge_url'):
+    if c.get('notifications',{}).get('enabled',False) and c['notifications'].get('transport')!='native' and not c['notifications'].get('bridge_url'):
         raise ValueError('notifications.bridge_url is required')
+    if not isinstance(c.get('max_workers',3),int) or not 1<=c.get('max_workers',3)<=3:
+        raise ValueError('max_workers must be between 1 and 3')
     c.setdefault('database','data/watcher.sqlite')
     c.setdefault('archive_dir','data/snapshots')
     c.setdefault('filters',{'min_year':2022})
@@ -49,7 +52,7 @@ def process_lock(database):
         connection.rollback(); connection.close()
 
 
-def scan(c,args):
+def scan(c,args,notifier=None):
     timestamp=now()
     db=c['database']
     with process_lock(db):
@@ -64,27 +67,27 @@ def scan(c,args):
                 fetcher.close()
         try:
           selected=[s for s in c['sources'] if s.get('enabled',True) and (not args.source or s['name'] in args.source)]
-          with ThreadPoolExecutor(max_workers=min(3,len(selected) or 1)) as pool:
+          with ThreadPoolExecutor(max_workers=min(c.get('max_workers',3),len(selected) or 1)) as pool:
             futures={pool.submit(collect,s):s for s in selected}
             for future in as_completed(futures):
                 source=futures[future]
                 try:
                     items,pages,observed_at=future.result()
-                    archive_snapshot(c['archive_dir'],source['name'],observed_at,items,pages=pages)
+                    archive_snapshot(c['archive_dir'],source['name'],observed_at,items,pages=pages,compress=c.get('compress_snapshots',False))
                     events=store.ingest(source['name'],items,observed_at,c.get('price_alerts',False),c.get('min_price_drop',500))
                     row={'source':source['name'],'status':'ok','pages':pages,'parsed':len(items),
                          'matching':sum(not reject_reason(x,c['filters']) for x in items),'events':len(events)}
                 except Exception as exc:
                     # Never bootstrap/advance a source from a failed or incomplete result.
                     store.fail(source['name'],str(exc),timestamp)
-                    archive_snapshot(c['archive_dir'],source['name'],timestamp,error=str(exc))
+                    archive_snapshot(c['archive_dir'],source['name'],timestamp,error=str(exc),compress=c.get('compress_snapshots',False))
                     row={'source':source['name'],'status':'error','error':str(exc)[:400]}
                 summary.append(row)
                 print(json.dumps(row,ensure_ascii=False),flush=True)
           notification_error=False
           if c.get('notifications',{}).get('enabled') and not args.no_send:
                 try:
-                    sent=deliver(store,c['notifications'])
+                    sent=notifier(store) if notifier else deliver(store,c['notifications'])
                     print(json.dumps({'sent':sent}),flush=True)
                 except Exception as exc:
                     notification_error=True
@@ -104,9 +107,11 @@ def replay(paths,filters,output):
     snapshots=[]
     for raw in paths:
         p=Path(raw)
-        files=sorted(p.rglob('*.json')) if p.is_dir() else [p]
+        files=sorted([*p.rglob('*.json'),*p.rglob('*.json.gz')]) if p.is_dir() else [p]
         for file in files:
-            obj=json.loads(file.read_text())
+            if file.name.endswith('.json.gz'):
+                with gzip.open(file,'rt',encoding='utf-8') as handle:obj=json.load(handle)
+            else:obj=json.loads(file.read_text(encoding='utf-8'))
             if isinstance(obj,list):snapshots.extend(obj)
             elif 'snapshots' in obj:snapshots.extend(obj['snapshots'])
             elif 'source' in obj and 'timestamp' in obj:snapshots.append(obj)
@@ -173,7 +178,7 @@ def main(argv=None):
                 state={'sent':'sent','retry':'queued','discard':'discarded'}[args.decision]
                 if not store.db.execute('SELECT id FROM events WHERE id=?',(args.id,)).fetchone():
                     raise ValueError('Unknown event ID')
-                if args.decision=='retry':
+                if args.decision=='retry' and c['notifications'].get('transport')!='native':
                     token=os.environ.get('BRIDGE_TOKEN','')
                     if not token:raise ValueError('BRIDGE_TOKEN required to reconcile the bridge ledger')
                     req=urllib.request.Request(c['notifications']['bridge_url'].rstrip('/')+'/resolve',

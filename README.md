@@ -1,216 +1,89 @@
-# Tesla Watcher
+# Tesla Watcher — Python
 
-Python-tool voor nieuwe **Tesla Model S-advertenties vanaf 2022**, met gratis meldingen via je gekoppelde **WhatsApp Web**. CarAPIS wordt als gewone website gescrapet. Geen CarAPIS-account, betaalde voertuig-API of WhatsApp Business-account nodig.
+Elke tien minuten zoeken naar nieuwe Tesla Model S-advertenties vanaf 2022, met WhatsApp via een gekoppeld apparaat. De standaardinstallatie gebruikt één Python-proces: geen Chrome, Node.js, Docker of betaalde WhatsApp-API.
 
-De scanner, database, HTML-parsers, WhatsApp-helper, installatiebestanden, regressietests, replay-tool en testrapporten zitten in dit pakket. Je koppelt zelf WhatsApp met een QR-code. Er is nog geen hosting aangemaakt en er zijn geen echte WhatsApp-berichten verstuurd tijdens het bouwen.
+Bronnen: **CarAPIS-website**, AutoScout24 NL/BE/DE, Marktplaats, Gaspedaal, mobile.de, 2dehands.be en Kleinanzeigen. CarAPIS wordt als website gelezen; er wordt geen CarAPIS-API gebruikt.
 
-## Wat is er getest?
+## Snel starten
 
-Zie **[TESTRESULTATEN.md](TESTRESULTATEN.md)** voor de concrete live scan en beperkingen. De volledige inventaris is uitgelezen voor negen koppelingen: CarAPIS, AutoScout24 NL/BE/DE, Marktplaats, Gaspedaal, mobile.de, 2dehands en Kleinanzeigen. Dit is een momentopname, geen garantie dat hun pagina's blijven werken.
+Python **3.12 op Linux x86_64** is getest. Maak lokaal desgewenst een virtualenv en voer uit:
 
-De tests bevatten echte, verkleinde paginastructuren en een Python → HTTP → Node-integratietest met een nep-WhatsApp-driver. De dertigdagensimulatie test nieuwe advertenties, dubbele VIN's, herplaatsingen, 30 bronstoringen en acht herstarts. **Dat is geen historische marktbacktest.** Er was vooraf geen historisch advertentiearchief beschikbaar.
-
-## Snel starten met Docker
-
-Benodigd: Docker met Compose, plus Python 3.12 of nieuwer voor de setup. Op Windows kan dit met Docker Desktop. Op een Linux-server werken dezelfde Docker-commando's. Reken voor gelijktijdige browsers op minimaal 2 GB RAM; 4 GB geeft meer ruimte.
-
-1. Pak het zipbestand uit en open een terminal in de map `tesla-watcher`.
-2. Genereer de instellingen:
-
-   ```bash
-   python tools/setup.py
-   ```
-
-   Vul **je ontvangende nummer** in met landcode, bijvoorbeeld `31612345678`. Dit maakt `.env` en `config.docker.json`. Bewaar `.env` privé: daarin staat het wachtwoord voor de koppeling.
-
-3. Pas de zoekfilters in `config.docker.json` aan, vóór de eerste scan. Standaard: alle uitvoeringen vanaf 2022, zonder prijs- of kilometerlimiet. De CarAPIS-website bevat ook andere landen dan NL/BE/DE; standaard is daarvoor geen extra landenfilter ingesteld.
-4. Start alleen de WhatsApp-service:
-
-   ```bash
-   docker compose up -d --build whatsapp
-   ```
-
-5. Open **http://localhost:3000**. Gebruikersnaam: `admin`. Wachtwoord: de waarde van `BRIDGE_TOKEN` in `.env`. Scan de QR met WhatsApp → Instellingen → Gekoppelde apparaten → Apparaat koppelen.
-6. Klik op **Stuur een testmelding**. Controleer in WhatsApp én op je telefoon of die aankomt. Bij dezelfde afzender en ontvanger kan de chat wel bijwerken zonder pushmelding. Gebruik dan een tweede WhatsApp-account als gekoppelde afzender, met je eigen nummer als `WHATSAPP_TO`.
-7. Start de scanner met verzenden nog uit:
-
-   ```bash
-   docker compose up -d --build scanner
-   docker compose logs -f scanner
-   ```
-
-   Wacht tot iedere gewenste bron een regel met `"status": "ok"` toont. De eerste volledige scan legt de bestaande voorraad vast en verstuurt geen advertenties.
-8. Zet daarna in `config.docker.json` onder `notifications` de instelling `"enabled": true`, en herstart:
-
-   ```bash
-   docker compose restart scanner
-   ```
-
-De scanner start iedere 600 seconden een ronde, met maximaal drie onafhankelijke bronnen tegelijk. De WhatsApp-service blijft verbonden. Een langlopende scan kan het interval overschrijden; er worden geen overlappende rondes gestart. Niet iedere tien minuten een WhatsApp-bericht: alleen bij een nieuw passend aanbod.
-
-## Op een externe server koppelen
-
-De QR-pagina is uitsluitend op localhost gepubliceerd. Maak vanaf je eigen computer een tunnel:
-
-```bash
-ssh -L 3000:127.0.0.1:3000 jouwgebruiker@jouwserver
-```
-
-Open daarna lokaal http://localhost:3000. Zet de QR-pagina niet onbeveiligd op internet. Sessies en database staan op blijvende Docker-volumes. `docker compose down` bewaart deze; `docker compose down -v` wist ze.
-
-Hosting en eventueel een extra telefoonnummer kosten afzonderlijk geld. Software en WhatsApp-berichten hebben bij deze opzet geen abonnement of vergoeding per bericht. Een eigen computer die aan blijft kan ook als host dienen.
-
-## Lokaal zonder Docker
-
-Benodigd: **Python 3.12+ en Node.js 20+**. De HTTP-scanner gebruikt alleen de Python-standaardbibliotheek.
-
-```bash
+```sh
+pip install -r requirements.txt
+python main.py --check
 python tools/setup.py
-npm --prefix bridge ci
-python tools/run.py bridge
+python main.py
 ```
 
-Laat die terminal open, koppel op http://localhost:3000 en stuur de testmelding. Het npm-commando downloadt de browser die Puppeteer gebruikt. Voor een reeds geïnstalleerde Chromium kun je `CHROMIUM_PATH` toevoegen aan `.env`.
+`setup.py` vraagt je ontvangernummer en maakt een lokaal `.env`-bestand. Open `http://localhost:8080`, log in als `admin` met het wachtwoord uit `.env`, en scan de QR via **WhatsApp → Instellingen → Gekoppelde apparaten**. Klik daarna op **Stuur testmelding**. Gebruik voor een openbaar bereikbare installatie de HTTPS-link van je host; Basic Auth en de QR moeten via HTTPS worden geopend.
 
-In een tweede terminal:
+Je telefoon moet WhatsApp kunnen koppelen. Neonize gebruikt het onofficiële linked-device-protocol; WhatsApp kan de verbinding verbreken of wijzigingen doorvoeren. De code gebruikt geen browser. Een apart verzendnummer is handig: berichten aan je eigen account geven mogelijk geen pushmelding. Test dit op je telefoon.
 
-```bash
-python tools/run.py scan --mode http --no-send
-python tools/run.py status
-```
+## Gratis hosting zonder betaalkaart
 
-Na de eerste geslaagde scans zet je **in `config.json`** `notifications.enabled` op `true` en start je:
+Dezelfde code kan bij een Python-host of op een computer thuis draaien. Er is geen speciale hosting-API nodig.
 
-```bash
-python tools/run.py run --mode auto
-```
+| Optie | Volgens aanbieder | Aandachtspunt |
+| --- | --- | --- |
+| [Enzonic Python](https://www.enzonic.com/python) | Gratis, zonder kaart, 512 MB RAM, 10 GB SSD, continu actief | Gratis capaciteit is beperkt; controleer het aanbod bij aanmaken |
+| [KataBump](https://katabump.com/) | Gratis Python, zonder kaart | [Elke vier dagen handmatig verlengen](https://docs.katabump.com/hosting/renew-your-server/); anders opschorting en een dag later verwijdering |
+| Eigen pc / mini-pc | Geen hostingabonnement of kaart | Computer moet aanblijven; stroom en internet zijn voor eigen rekening |
 
-Voor de extra browserfallback van de **autowebsites**:
+Aanbod gecontroleerd op 30 oktober 2026. Dit project is nog **niet bij deze providers gedeployed**; capaciteit, toegang tot autosites, het koppelen van WhatsApp en beschikbaarheid moeten daar worden gecontroleerd. Gratis hosting geeft geen gegarandeerde scanfrequentie of uptime.
 
-```bash
-python -m pip install -r requirements-browser.txt
-python -m playwright install chromium
-```
+### Instellingen in het hostingpaneel
 
-Op Linux kunnen daarvoor extra systeembibliotheken nodig zijn: `python -m playwright install --with-deps chromium`. Deze browser is gescheiden van de WhatsApp-browser. De Dockerfile installeert dit al. Browserfallback gebruikt een normale browser, zonder CAPTCHA-oplossers of stealthplugins.
+1. Maak een **Python 3.12**-server en importeer deze GitHub-repository. Kies geen Docker-template voor de lichte versie.
+2. Installatiecommando: `pip install -r requirements.txt` (bij automatische installatie van requirements is dit al geregeld).
+3. Startcommando: `python main.py`.
+4. Stel `WHATSAPP_TO` in op je **eigen** ontvangernummer met landcode, alleen cijfers, bijvoorbeeld `31612345678`.
+5. Stel `ADMIN_PASSWORD` in op een zelfgekozen wachtwoord van minstens zestien tekens. De webgebruikersnaam is `admin`.
+6. Gebruik de toegewezen `PORT` of `SERVER_PORT`. Beide worden automatisch gelezen; standaard is 8080. Open de HTTPS-webpagina en koppel WhatsApp met de QR.
+7. Klik **Stuur testmelding** en controleer de chat én een pushmelding. De eerste succesvolle scan van elke bron wordt stil als beginstand opgeslagen. Alleen latere nieuwe advertenties geven meldingen.
 
-De twee systemd-servicevoorbeelden in `deploy/` zijn voor een Linux-installatie op `/opt/tesla-watcher`. Maak eerst de gebruiker, Python-omgeving en schrijfbare datamap aan en installeer de dependencies. Pas de paden aan jouw server aan; deze units zijn voorbeelden en zijn niet op een server geactiveerd.
+Als de host alleen een privéconsole heeft, zet `TERMINAL_QR=1` om de QR daar te tonen. Dit werkt voor tekst-QR's; het webscherm blijft de standaard. Toon de console en QR niet publiek.
 
-## Filters
+Bewaar de map **`data/` op blijvende schijf**. Daar staan de WhatsApp-sessie, database, wachtrij en scanarchieven. Zonder deze map moet je opnieuw koppelen en wordt opnieuw een beginstand opgebouwd. Maak een privébackup, en zet deze map of `.env` nooit op GitHub. Eén actieve instantie per data-map; geen automatische horizontale schaalvergroting.
 
-| Instelling | Voorbeeld | Betekenis |
-|---|---|---|
-| `min_year` | `2022` | Ondergrens op het opgegeven jaar |
-| `allow_first_registration` | `true` | Ook eerste toelating als jaarbasis toestaan |
-| `max_price` | `55000` of `null` | Maximaal bedrag in EUR; `null` is onbeperkt |
-| `max_mileage` | `100000` of `null` | Maximale kilometerstand |
-| `countries` | `["NL","BE","DE","SE"]` of `[]` | Leeg betekent geen extra landenfilter |
-| `variant` | `"any"` of `"long_range"` | Long Range moet dan expliciet in de titel staan |
-| `exclude_plaid` | `true` | Plaid uitsluiten |
-| `include_damaged` | `false` | Herkende schadeadvertenties uitsluiten |
+## Configuratie en werking
 
-Bij een verandering van de **filters** kies je een nieuwe `database`-bestandsnaam. De software weigert anders de gewijzigde filters om onbedoelde meldingen over oud aanbod te voorkomen. Bij een bredere zoek-URL is eveneens een nieuwe database of een nieuwe bronnaam verstandig. Het veranderen van meldingsinstellingen vereist alleen een herstart.
+`main.py` gebruikt `config.light.json`: één bron tegelijk, HTTP-verzoeken, tienminuteninterval, gecomprimeerde snapshots en zeven dagen snapshotbewaring. Er is geen browserfallback in deze modus. Een 403, captcha, timeout of gewijzigde HTML wordt als bronfout opgeslagen; een mislukte scan geldt niet als lege zoeklijst. Bekijk de bronstatus in het webscherm.
 
-Bouwjaar, opgegeven catalogusjaar en eerste toelating worden onderscheiden in `year_basis`. Een jaar zoals "nieuwe accu in 2024" telt niet zelfstandig als bouwjaar. Er wordt geen RDW/VIN-dienst gebruikt om het bouwjaar onafhankelijk te bewijzen. Zet `allow_first_registration` op `false` als je alleen bronnen met expliciet bouwjaar wilt toestaan.
+Instelbare omgevingsvariabelen:
 
-CarAPIS toont in de uitgevoerde scan USD-prijzen. De tool bewaart die valuta; hij verzint geen EUR-omrekening. Bij een EUR-prijsmaximum worden advertenties in andere valuta uitgesloten. Zonder prijsmaximum kunnen ze gewoon een melding geven.
+| Naam | Betekenis |
+| --- | --- |
+| `WHATSAPP_TO` | Vast ontvangernummer inclusief landcode |
+| `ADMIN_PASSWORD` | Wachtwoord webscherm, minstens zestien tekens |
+| `PORT` / `SERVER_PORT` | HTTP-poort van de host |
+| `DATA_DIR` | Blijvende opslagmap, standaard `data/` naast de code |
+| `CONFIG_FILE` | Alternatieve configuratie, standaard `config.light.json` |
+| `SEND_NOTIFICATIONS` | `false` om verzending bij een verse installatie te pauzeren; daarna blijft de webkeuze opgeslagen |
+| `TERMINAL_QR` | Alleen `1` als je QR in een privéconsole wilt |
 
-## Welke websites en hoe?
+De scanner loopt zonder overlappende scans. Als een scan langer dan tien minuten duurt, volgt de volgende scan na voltooiing; er is geen garantie op precies tien minuten. De verzendworker werkt onafhankelijk van de scanner.
 
-- **CarAPIS:** HTML-voertuigkaarten, met behoud van merk/model/jaarfilters bij paginering. Geen API-aanroepen.
-- **AutoScout24 NL/BE/DE:** de inventaris die de website zelf in de HTML meestuurt.
-- **Marktplaats en 2dehands:** ingebedde `__NEXT_DATA__`, inclusief prijs in centen, bouwjaar en kilometerstand; alle voorraadpagina's.
-- **Gaspedaal:** JSON-data in de HTML/React Flight, inclusief bouwjaar en de kliklink naar de oorspronkelijke aanbieder. Een `api.gaspedaal.nl/redirect/...` in een melding is hun gewone advertentie-redirect, geen betaalde data-API.
-- **mobile.de:** HTML-kaarten en reguliere zoekopdrachten per registratiejaar. De brede zoekopdracht kreeg tijdens de test een 403 op pagina vier; de opdeling per jaar is vervolgens volledig geslaagd. Alle jaarpartities moeten lukken voordat de beginstand wordt bevestigd.
-- **Kleinanzeigen:** advertentiekaarten, gezochte advertenties herkennen en paginering.
+Bouwjaar wordt gebruikt waar beschikbaar, anders eerste registratie. Wil je alleen bevestigd bouwjaar, zet `allow_first_registration` op `false` en begin met een nieuwe data-map. Wijzigingen aan filters vereisen een nieuwe database om een betrouwbare beginstand te leggen.
 
-Aanbevolen eerste controle na installatie: open enkele links, vergelijk prijs/jaar/kilometers en controleer elke bronstatus. Onbekende layouts, blokkades, herhaalde pagina's en een te laag paginalimiet worden als fout geregistreerd, niet als nul resultaten. Een 403 wordt in `auto` desgewenst eenmaal met een gewone browser geprobeerd. Blijvende blokkades vereisen aanpassing of het tijdelijk uitschakelen van die bron.
+Advertenties blijven over herstarts heen bekend. Dezelfde auto wordt tussen bronnen alleen samengevoegd bij sterke identifiers zoals VIN of kenteken. Een auto zonder zulke identifiers kan op meerdere websites een melding geven. Prijsveranderingen geven standaard geen melding.
 
-De code bezoekt de gefilterde websites, niet iedere advertentiedetailpagina. Daarom zijn VIN, kenteken en plaats niet overal beschikbaar. Er is geen automatische login op autosites.
+Meldingen blijven bij een verbroken verbinding in de wachtrij. Bij een onderbroken of onduidelijke verzending krijgt het event de status **uncertain**, zodat geen automatische dubbele melding ontstaat. Controleer je chat en kies in het webscherm of de melding al is verstuurd, opnieuw mag worden geprobeerd of moet worden overgeslagen. Een bevestigde server-ID bewijst geen pushmelding op je telefoon.
 
-## Dubbelen en verzending
+RAM hangt af van paginaformaat en de gekoppelde WhatsApp-sessie. De Go-runtime heeft een zachte geheugenrichtwaarde van 96 MiB, geen harde limiet voor het hele proces. Test het werkelijke gebruik op je host na koppelen. Beschikbaarheid en websitevoorwaarden verschillen per bron; de code probeert geen captcha te omzeilen.
 
-Nieuw betekent: voor deze scanner voor het eerst als passend waargenomen. Een portal kan later ook een oudere advertentie toevoegen; de scanner kan zonder betrouwbare publicatiedatum niet bewijzen dat de advertentie ook op de oorspronkelijke website pas net is geplaatst.
+## Tests en backtest
 
-- Per bron: advertentie-ID en opgeschoonde URL.
-- Over bronnen heen: dezelfde canonieke URL, een geldige VIN of een kenteken met landcode.
-- **Geen VIN of kenteken beschikbaar? Dan zijn dubbele meldingen voor dezelfde auto mogelijk.** Twee auto's met hetzelfde jaar/prijs/km worden bewust niet automatisch samengevoegd.
-- De beginstand is per bron. Een bron die eerst faalt, heeft pas na een volledige geslaagde scan een beginstand.
-- Een herplaatsing met hetzelfde bekende VIN/kenteken geeft geen nieuwe melding.
-- Prijsdalingen staan standaard uit. Zet `price_alerts` op `true`; `min_price_drop` bepaalt de minimumdaling per advertentie. Dit is geen voorspeller van een goede aankoopprijs.
-
-Een melding gaat eerst naar een blijvende verzendwachtrij. De WhatsApp-service onthoudt event-ID's op schijf. De Python-service kan daardoor na een verloren HTTP-antwoord hetzelfde event opvragen zonder nogmaals te versturen.
-
-**Een onzekere uitkomst krijgt `uncertain`.** Bij een crash precies rond het verzenden is mathematisch perfecte exactly-once-bezorging niet te garanderen. De tool verstuurt dan niet blind opnieuw. Controleer eerst je WhatsApp-chat en bekijk `events`:
-
-```bash
-python tools/run.py events
-python tools/run.py resolve-event EVENT_ID sent
-python tools/run.py resolve-event EVENT_ID retry
-python tools/run.py resolve-event EVENT_ID discard
-```
-
-Gebruik alleen de passende beslissing, niet alle drie. `retry` stemt ook het bridge-logboek af en vereist dat de bridge bereikbaar is. In Docker:
-
-```bash
-docker compose exec scanner python -m watcher.cli events
-docker compose exec scanner python -m watcher.cli resolve-event EVENT_ID retry
-```
-
-`sent` betekent dat de WhatsApp-server de melding heeft bevestigd. Het betekent niet dat de ontvanger de melding heeft gelezen of dat de telefoon een geluid heeft gemaakt. WhatsApp Web-automatisering is onofficieel en kan door wijzigingen of accountbeperkingen uitvallen.
-
-## Status en onderhoud
-
-```bash
-docker compose logs --tail=100 scanner
-docker compose logs --tail=100 whatsapp
-docker compose exec scanner python -m watcher.cli status
-```
-
-`data/status.json` bevat de laatste scanresultaten; SQLite houdt per bron de laatste geslaagde controle en fouten bij. Status en logs zijn de foutsignalering; er is geen aparte automatische storingsmelding via WhatsApp geïmplementeerd. De QR-pagina toont de WhatsApp-verbindingsstatus.
-
-Tijdens een actieve scan kan het CLI-statuscommando melden dat de scanner bezig is. Gebruik dan de logs of het laatste statusbestand. De scheduler leest config bij starten; na een configuratiewijziging herstart je de scanner.
-
-Een bron uitschakelen: zet in de bijbehorende `sources`-regel `"enabled": false`. Verwijder een blokkade nooit door de database te wissen: daarmee verlies je de historiek en beginstand.
-
-## Tests zelf uitvoeren
-
-```bash
+```sh
 python -m unittest discover -s tests -v
-node --test bridge/test.js
 python tools/backtest.py
 ```
 
-De Python/Node-tests hebben geen WhatsApp-account nodig en sturen geen echte berichten. De Python-integratietest wordt overgeslagen als Node niet is geïnstalleerd. Het backtestscript genereert zelf een reproduceerbaar scenario met vaste seed en schrijft `reports/backtest.json`.
+De 30-daagse backtest is een **synthetische simulatie**, geen historische marktbacktest. Voor een echte replay van je eigen opgeslagen snapshots:
 
-## Echt historisch terugspelen
-
-Elke volledige of mislukte scan wordt als JSON-snapshot opgeslagen in `data/snapshots/JJJJ-MM-DD/`. Die bestanden maken een echte replay van je eigen verzamelde waarnemingen mogelijk:
-
-```bash
-python tools/run.py replay data/snapshots --output reports/mijn-replay.json
+```sh
+python -m watcher.cli replay data/snapshots --output reports/my-replay.json
 ```
 
-De replay gebruikt een tijdelijke database, verstuurt geen berichten en wijzigt de live-database niet. Input moet chronologisch zijn, met tijdzone in iedere timestamp. Het rapport telt de events die de huidige filters en detectielogica zouden produceren. Zonder een onafhankelijke waarheid over alle marktadvertenties meet je daarmee geen echte markt-recall.
+Zie [TESTRESULTATEN.md](TESTRESULTATEN.md) voor eerdere live bronmetingen en de beperkingen daarvan. Automatische tests bewijzen de scanner, wachtrij, herstarts, webauthenticatie en SDK-initialisatie; echte WhatsApp-aflevering vereist jouw koppeling en telefooncontrole.
 
-HTML-debugging kun je expliciet aanzetten met `scan --capture-html`. Die ruwe pagina's kunnen verkopersgegevens bevatten. De normale snapshots bewaren alleen de genormaliseerde advertentiegegevens. Er is nog geen automatische retentie: ruim oude snapshots zelf op of archiveer ze periodiek.
-
-## Back-ups
-
-```bash
-docker compose exec scanner python -m watcher.cli backup data/backup.sqlite
-```
-
-Maak daarnaast een back-up van beide Docker-volumes. Kopieer bij een draaiende SQLite-database niet alleen het `.sqlite`-bestand: gebruik het backup-commando. WhatsApp-sessies en `.env` zijn geheim en horen niet in GitHub of gedeelde zipbestanden.
-
-## Projectindeling
-
-- `watcher/`: scanner, parsers, filters, SQLite, outbox, CLI en replay.
-- `bridge/`: Node-helper met whatsapp-web.js, QR-pagina, authenticatie en verzendlogboek.
-- `tools/`: setup, cross-platform launcher en dertigdagensimulatie.
-- `tests/`, `fixtures/`: regressie- en integratietests; verkleinde bronstructuren van de bouwdatum.
-- `reports/`: uitgevoerde tests en live-validatie, zonder echte WhatsApp-sessie.
-- `compose.yaml`, Dockerfiles, `deploy/`: hosting- en servicebestanden.
-- `.github/workflows/tests.yml`: tests bij push/PR; geen scanner op GitHub Actions en geen automatische deploy.
-
-Upstreamdocumentatie: [whatsapp-web.js](https://github.com/wwebjs/whatsapp-web.js), [LocalAuth](https://wwebjs.dev/guide/creating-your-bot/authentication), [Playwright Python](https://playwright.dev/python/).
+De eerdere installatie met Chrome/Node en Docker blijft als alternatief beschikbaar in [docs/LEGACY_DOCKER.md](docs/LEGACY_DOCKER.md). Die is zwaarder en wordt niet gestart door `python main.py`.

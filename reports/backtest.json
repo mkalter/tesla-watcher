@@ -22,7 +22,7 @@
     "max": 567.0,
     "mean": 256.3
   },
-  "runtime_seconds": 18.547,
+  "runtime_seconds": 11.542,
   "limitations": [
     "Generated scenarios, not archived car advertisements.",
     "Latency is simulated scan latency, not measured WhatsApp delivery time.",

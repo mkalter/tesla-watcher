@@ -265,6 +265,9 @@ def parse_page(html, source, observed_at):
     tree = Tree(html)
     listings = []
     nodes = list(tree.root.walk())
+    native = native_extract(nodes, source, observed_at)
+    if native is not None:
+        return native
     def visit(obj):
         if isinstance(obj, dict):
             item = from_record(obj, source, observed_at)
@@ -300,10 +303,6 @@ def parse_page(html, source, observed_at):
             if not p.parent:
                 break
             p = p.parent
-    native = native_extract(nodes, source, observed_at)
-    if native is not None:
-        # Prefer the source's own inventory array; avoid recommendations and SEO examples.
-        return native
     # Same card often appears in both embedded JSON and DOM. Keep richest record.
     merged = {}
     for item in listings:

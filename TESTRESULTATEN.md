@@ -51,3 +51,16 @@ Voor een echte historische replay verzamelt de tool vanaf installatie snapshots.
 - Betrouwbare deduplicatie zonder VIN/kenteken: zonder een sterke identiteit kunnen twee sites alsnog afzonderlijke meldingen voor dezelfde auto geven.
 
 Zie de JSON-rapporten en testlogs in `reports/` voor de onderliggende resultaten.
+
+## Lichte Python-installatie
+
+Aanvulling van 30 oktober 2026. `python main.py` gebruikt Neonize 0.5.2, zonder Chrome, Node of Docker. De bestaande Docker-variant blijft als alternatief aanwezig.
+
+- 51 Python-tests geslaagd, waaronder SDK-initialisatie zonder netwerk, QR-generatie, verzending via een testclient, vaste ontvanger, wachtrij, herstarts, onzekere uitkomsten, authenticatie, Origin-controle, pauzeren en verzending tijdens een langlopende scan.
+- De 8 tests voor de oude Node-helper blijven slagen.
+- De synthetische 30-daagsimulatie opnieuw geslaagd: 40 verwachte meldingen, nul gemist en nul dubbel. Dit test geen echte WhatsApp-aflevering.
+- `python main.py --check` laadt de geïnstalleerde WhatsApp-dependency en alle negen bronconfiguraties.
+- `tools/benchmark_light.py` meet de ongekoppelde SDK plus achtereenvolgens opgeslagen HTML-pagina’s. Zie `reports/light-resources.json`. De gemeten piek is geen garantie voor een gekoppelde WhatsApp-sessie of een host met weinig RAM.
+- Geen WhatsApp-account gekoppeld tijdens deze tests. Geen echte telefoonmelding of providerdeployment getest. Dit moet na koppelen met de testknop worden gecontroleerd.
+
+Ruwe websitecaptures, WhatsApp-sessies en lokale databases zijn niet meegeüpload. De resourceproef gebruikt lokale captures als die aanwezig zijn, anders de verkleinde fixtures; uitkomsten verschillen daardoor per omgeving.

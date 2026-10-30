@@ -7,3 +7,7 @@ data/
 config.docker.json
 reports/*.html
 reports/*scratch.json
+
+.venv-light/
+*.egg-info/
+config.local.json

@@ -1,0 +1,38 @@
+{
+  "type": "offline_resource_smoke",
+  "neonize_constructed": true,
+  "whatsapp_connected": false,
+  "max_rss_mib": 77.0,
+  "elapsed_seconds": 1.0,
+  "sources": {
+    "carapis": {
+      "listings": 24,
+      "capture_bytes": 427303
+    },
+    "autoscout_nl": {
+      "listings": 7,
+      "capture_bytes": 690045
+    },
+    "marktplaats": {
+      "listings": 30,
+      "capture_bytes": 647304
+    },
+    "gaspedaal": {
+      "listings": 95,
+      "capture_bytes": 2021988
+    },
+    "mobile": {
+      "listings": 21,
+      "capture_bytes": 1202111
+    },
+    "2dehands": {
+      "listings": 30,
+      "capture_bytes": 629072
+    },
+    "kleinanzeigen": {
+      "listings": 23,
+      "capture_bytes": 974571
+    }
+  },
+  "limitations": "Unpaired client and sequential stored HTML. Not a connected-session memory guarantee or live host test."
+}

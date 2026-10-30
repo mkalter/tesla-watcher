@@ -1,0 +1,3 @@
+# Lightweight single-process Python application; no Node.js, Chrome or Docker.
+-c requirements.lock
+neonize==0.5.2
