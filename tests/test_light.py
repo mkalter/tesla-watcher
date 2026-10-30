@@ -98,6 +98,13 @@ class LightTests(unittest.TestCase):
         self.assertFalse(driver.ready())
         driver.set_recipient('31612345678');self.assertTrue(driver.ready())
         with self.assertRaises(ValueError):driver.set_recipient('wrong')
+    def test_expired_pairing_qr_is_restarted_without_touching_connected_client(self):
+        driver=NativeWhatsApp(self.root/'auth','')
+        driver._qr=b'png';driver._qr_time=10
+        self.assertFalse(driver._expired_qr(100))
+        self.assertTrue(driver._expired_qr(131));self.assertIsNone(driver._qr)
+        driver._ready=True;driver._qr=b'png'
+        self.assertFalse(driver._expired_qr(500))
 
 class WebTests(unittest.TestCase):
     def setUp(self):

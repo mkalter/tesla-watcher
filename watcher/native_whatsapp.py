@@ -23,6 +23,7 @@ class NativeWhatsApp:
         self._error=''
         self._stop=threading.Event()
         self._thread=None
+        self._watchdog=None
         self._client=None
         self._state_lock=threading.Lock()
         self._send_lock=threading.Lock()
@@ -89,6 +90,22 @@ class NativeWhatsApp:
         self._stop.clear()
         self._thread=threading.Thread(target=self._run,name='whatsapp-linked-device',daemon=True)
         self._thread.start()
+        self._watchdog=threading.Thread(target=self._watch,name='whatsapp-qr-watchdog',daemon=True)
+        self._watchdog.start()
+
+    def _expired_qr(self,clock):
+        with self._state_lock:
+            expired=not self._ready and self._qr is not None and clock-self._qr_time>120
+            if expired:self._qr=None
+            return expired
+
+    def _watch(self):
+        while not self._stop.wait(10):
+            if self._expired_qr(time.monotonic()):
+                client=self._client
+                if client:
+                    try:client.stop()
+                    except Exception:pass
 
     def _run(self):
         delay=5
@@ -129,6 +146,7 @@ class NativeWhatsApp:
             try:client.stop()
             except Exception:pass
         if self._thread:self._thread.join(timeout=5)
+        if self._watchdog:self._watchdog.join(timeout=2)
 
 
 def recover_inflight(store):
