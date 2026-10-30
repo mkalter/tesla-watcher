@@ -116,6 +116,11 @@ class LiteApp:
                 connection.execute("INSERT INTO events(id,kind,payload,text,created_at) VALUES (?,'test','{}',?,?)",(event_id,text,now()))
             self._last_test=time.monotonic();self._notice='Testmelding toegevoegd. Controleer je WhatsApp-chat en de telefoonmelding.'
 
+    def relink_whatsapp(self):
+        with self._lock:
+            self.driver.relink()
+            self._notice='Nieuwe WhatsApp-koppeling aangevraagd.'
+
     def set_recipient(self,number):
         number=number.strip().lstrip('+').replace(' ','')
         if not re.fullmatch(r'\d{8,15}',number):raise ValueError('Gebruik je eigen ontvangernummer met landcode, alleen cijfers.')
@@ -254,6 +259,7 @@ class LiteApp:
                     elif self.path=='/test':app.queue_test()
                     elif self.path=='/notifications/on':app.set_notifications(True)
                     elif self.path=='/notifications/off':app.set_notifications(False)
+                    elif self.path=='/whatsapp/relink':app.relink_whatsapp()
                     elif self.path=='/recipient':
                         from urllib.parse import parse_qs
                         form=parse_qs(body.decode('utf-8'))
@@ -272,7 +278,9 @@ class LiteApp:
 def render(status):
     w=status['whatsapp']
     rows=''.join('<tr><td>'+escape(str(r['name']))+'</td><td>'+escape('fout' if r['error'] else 'ok')+'</td><td>'+str(r['count'])+'</td><td>'+escape(str(r['last_success'] or 'nog niet'))+'</td><td>'+escape(str(r['error'] or ''))+'</td></tr>' for r in status['sources'])
-    pairing='<p>Verbonden met WhatsApp.</p>' if w['ready'] else '<img class="qr" src="/qr" alt="QR wordt geladen">' if w['qr_available'] else '<p>WhatsApp start of probeert te verbinden. De pagina vernieuwt automatisch.</p>'
+    pairing='<p>Verbonden met WhatsApp.</p>' if w['ready'] else '<img class="qr" src="/qr" alt="QR wordt geladen">' if w['qr_available'] else '<p>WhatsApp-status: '+escape(w.get('phase','starten'))+'. Wacht op de QR of bekijk de fout hieronder.</p>'
+    pairing+='<p class="muted">Fase: '+escape(w.get('phase','onbekend'))+'</p>'
+    pairing+='<form method="post" action="/whatsapp/relink"><button>Opnieuw koppelen (bestaande sessie wissen)</button></form>'
     recipient_form='<p>Ontvangernummer opgeslagen.</p>' if w.get('recipient_configured',False) else '<p>Vul je eigen ontvangernummer met landcode in om meldingen te ontvangen.</p>'
     recipient_form+='<form method="post" action="/recipient"><label>Jouw ontvangernummer <input name="number" type="tel" placeholder="31612345678" pattern="[+0-9 ]{8,20}" required autocomplete="tel"></label><button>Nummer opslaan</button></form>'
     reviews=''
@@ -280,7 +288,7 @@ def render(status):
         reviews+='<details><summary>Onzekere verzending — controleer je WhatsApp-chat</summary><pre>'+escape(event['text'])+'</pre><form method="post" action="/resolve"><input type="hidden" name="id" value="'+escape(event['id'])+'"><button name="decision" value="sent">Staat al in mijn chat</button><button name="decision" value="retry">Niet verzonden: opnieuw proberen</button><button name="decision" value="discard">Overslaan</button></form></details>'
     toggle='off' if status['notifications'] else 'on'
     label='Meldingen pauzeren' if status['notifications'] else 'Meldingen aanzetten'
-    return '''<!doctype html><html lang="nl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="20"><title>Tesla Watcher</title><style>body{font:16px system-ui;color:#161616;background:#f5f5f7;max-width:1080px;margin:32px auto;padding:16px}section{background:white;padding:24px;border-radius:20px;margin:16px 0}h1{font-size:36px;margin:0}.qr{max-width:280px;width:100%}button{border:0;background:#0071e3;color:white;border-radius:10px;padding:10px 16px;cursor:pointer;margin:4px}form{display:inline}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:10px 6px;border-bottom:1px solid #eee}pre{white-space:pre-wrap;overflow-wrap:anywhere}.scroll{overflow-x:auto}.muted{color:#666}</style><h1>Tesla Watcher</h1><p class="muted">Nieuwe Tesla Model S-advertenties vanaf 2022 · elke tien minuten</p><section><h2>WhatsApp koppelen</h2><p>WhatsApp → Instellingen → Gekoppelde apparaten → Apparaat koppelen.</p>'''+pairing+recipient_form+'<p>'+escape(w.get('error',''))+'''</p><form method="post" action="/test"><button>Stuur testmelding</button></form><p class="muted">Controleer ook of je telefoon een pushmelding geeft. Berichten aan jezelf geven mogelijk geen geluid.</p></section><section><h2>Scanner</h2><p>'''+escape(status['notice'])+'</p><p>'+('Scan loopt.' if status['active'] else 'Volgende scan over '+str(status['next_scan_in'])+' seconden.')+'</p><form method="post" action="/scan"><button>Nu scannen</button></form><form method="post" action="/notifications/'+toggle+'"><button>'+label+'</button></form><p>Wachtrij: '+escape(json.dumps(status['events']))+'</p><div class="scroll"><table><tr><th>Bron</th><th>Status</th><th>Advertenties</th><th>Laatste succes (UTC)</th><th>Fout</th></tr>'+rows+'</table></div>'+reviews+'</section></html>'
+    return '''<!doctype html><html lang="nl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="5"><title>Tesla Watcher</title><style>body{font:16px system-ui;color:#161616;background:#f5f5f7;max-width:1080px;margin:32px auto;padding:16px}section{background:white;padding:24px;border-radius:20px;margin:16px 0}h1{font-size:36px;margin:0}.qr{max-width:280px;width:100%}button{border:0;background:#0071e3;color:white;border-radius:10px;padding:10px 16px;cursor:pointer;margin:4px}form{display:inline}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:10px 6px;border-bottom:1px solid #eee}pre{white-space:pre-wrap;overflow-wrap:anywhere}.scroll{overflow-x:auto}.muted{color:#666}</style><h1>Tesla Watcher</h1><p class="muted">Nieuwe Tesla Model S-advertenties vanaf 2022 · elke tien minuten</p><section><h2>WhatsApp koppelen</h2><p>WhatsApp → Instellingen → Gekoppelde apparaten → Apparaat koppelen.</p>'''+pairing+recipient_form+'<p>'+escape(w.get('error',''))+'''</p><form method="post" action="/test"><button>Stuur testmelding</button></form><p class="muted">Controleer ook of je telefoon een pushmelding geeft. Berichten aan jezelf geven mogelijk geen geluid.</p></section><section><h2>Scanner</h2><p>'''+escape(status['notice'])+'</p><p>'+('Scan loopt.' if status['active'] else 'Volgende scan over '+str(status['next_scan_in'])+' seconden.')+'</p><form method="post" action="/scan"><button>Nu scannen</button></form><form method="post" action="/notifications/'+toggle+'"><button>'+label+'</button></form><p>Wachtrij: '+escape(json.dumps(status['events']))+'</p><div class="scroll"><table><tr><th>Bron</th><th>Status</th><th>Advertenties</th><th>Laatste succes (UTC)</th><th>Fout</th></tr>'+rows+'</table></div>'+reviews+'</section></html>'
 
 
 def main():
