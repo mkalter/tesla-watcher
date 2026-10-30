@@ -11,7 +11,7 @@ import time
 class NativeWhatsApp:
     def __init__(self, directory, recipient, terminal_qr=False):
         recipient=recipient.strip().lstrip('+').replace(' ','')
-        if not re.fullmatch(r'\d{8,15}',recipient):
+        if recipient and not re.fullmatch(r'\d{8,15}',recipient):
             raise ValueError('WHATSAPP_TO: use your receiving number with country code, digits only')
         self.directory=Path(directory)
         self.directory.mkdir(parents=True,exist_ok=True,mode=0o700)
@@ -30,10 +30,14 @@ class NativeWhatsApp:
     def status(self):
         with self._state_lock:
             return {'ready':self._ready,'qr_available':self._qr is not None and time.monotonic()-self._qr_time<120,
-                    'error':self._error,'driver':'neonize','browser_required':False}
+                    'error':self._error,'driver':'neonize','browser_required':False,'recipient_configured':bool(self.recipient)}
 
     def ready(self):
-        with self._state_lock:return self._ready
+        with self._state_lock:return self._ready and bool(self.recipient)
+
+    def set_recipient(self,recipient):
+        if not re.fullmatch(r'\d{8,15}',recipient):raise ValueError('Gebruik een nummer met landcode, alleen cijfers.')
+        with self._state_lock:self.recipient=recipient
 
     def qr(self):
         with self._state_lock:

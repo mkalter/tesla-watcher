@@ -29,14 +29,14 @@ Dezelfde code kan bij een Python-host of op een computer thuis draaien. Er is ge
 | [KataBump](https://katabump.com/) | Gratis Python, zonder kaart | [Elke vier dagen handmatig verlengen](https://docs.katabump.com/hosting/renew-your-server/); anders opschorting en een dag later verwijdering |
 | Eigen pc / mini-pc | Geen hostingabonnement of kaart | Computer moet aanblijven; stroom en internet zijn voor eigen rekening |
 
-Aanbod gecontroleerd op 30 oktober 2026. Dit project is nog **niet bij deze providers gedeployed**; capaciteit, toegang tot autosites, het koppelen van WhatsApp en beschikbaarheid moeten daar worden gecontroleerd. Gratis hosting geeft geen gegarandeerde scanfrequentie of uptime.
+Aanbod gecontroleerd op 30 oktober 2026. De lichte versie is op **KataBump geïnstalleerd en gestart**; de CarAPIS-scan en ongekoppelde WhatsApp-client werken daar. Enzonic is niet getest. De externe HTTPS-test werd in onze testbrowser geblokkeerd. Echte WhatsApp-aflevering moet na jouw koppeling worden gecontroleerd. Capaciteit en toegang tot de overige autosites kunnen verschillen. Gratis hosting geeft geen gegarandeerde scanfrequentie of uptime.
 
 ### Instellingen in het hostingpaneel
 
 1. Maak een **Python 3.12**-server en importeer deze GitHub-repository. Kies geen Docker-template voor de lichte versie.
 2. Installatiecommando: `pip install -r requirements.txt` (bij automatische installatie van requirements is dit al geregeld).
 3. Startcommando: `python main.py`.
-4. Stel `WHATSAPP_TO` in op je **eigen** ontvangernummer met landcode, alleen cijfers, bijvoorbeeld `31612345678`.
+4. Vul je **eigen** ontvangernummer in het webscherm in (met landcode), of stel vooraf `WHATSAPP_TO` in, bijvoorbeeld `31612345678`.
 5. Stel `ADMIN_PASSWORD` in op een zelfgekozen wachtwoord van minstens zestien tekens. De webgebruikersnaam is `admin`.
 6. Gebruik de toegewezen `PORT` of `SERVER_PORT`. Beide worden automatisch gelezen; standaard is 8080. Open de HTTPS-webpagina en koppel WhatsApp met de QR.
 7. Klik **Stuur testmelding** en controleer de chat én een pushmelding. De eerste succesvolle scan van elke bron wordt stil als beginstand opgeslagen. Alleen latere nieuwe advertenties geven meldingen.
@@ -44,6 +44,12 @@ Aanbod gecontroleerd op 30 oktober 2026. Dit project is nog **niet bij deze prov
 Als de host alleen een privéconsole heeft, zet `TERMINAL_QR=1` om de QR daar te tonen. Dit werkt voor tekst-QR's; het webscherm blijft de standaard. Toon de console en QR niet publiek.
 
 Bewaar de map **`data/` op blijvende schijf**. Daar staan de WhatsApp-sessie, database, wachtrij en scanarchieven. Zonder deze map moet je opnieuw koppelen en wordt opnieuw een beginstand opgebouwd. Maak een privébackup, en zet deze map of `.env` nooit op GitHub. Eén actieve instantie per data-map; geen automatische horizontale schaalvergroting.
+
+### HTTPS op KataBump zonder domein
+
+De KataBump-installatie gebruikt optioneel `ENABLE_HTTPS_TUNNEL=1` en `HOST=127.0.0.1`. Daarmee start de app Cloudflare’s officiële `cloudflared`-client met SHA256-controle en een gratis tijdelijke HTTPS-link. Er is geen Cloudflare-account of betaalkaart nodig. De link staat in de console en in `data/dashboard-url.txt`. Je webwachtwoord staat bij automatisch aanmaken in `data/admin-password.txt`; open dit alleen zelf via het beveiligde KataBump-bestandenpaneel. De gebruikersnaam is `admin`.
+
+Een Quick Tunnel is bedoeld voor testen: de URL verandert na herstart en er is geen uptimegarantie. De scanner en WhatsApp werken door als alleen de tunnel uitvalt. Voor een blijvende web-URL is later een vaste HTTPS-proxy of een beheerde Cloudflare Tunnel nodig. De tunnel verbruikt extra RAM en schijfruimte. Zie [Cloudflare-documentatie](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
 
 ## Configuratie en werking
 
@@ -53,7 +59,7 @@ Instelbare omgevingsvariabelen:
 
 | Naam | Betekenis |
 | --- | --- |
-| `WHATSAPP_TO` | Vast ontvangernummer inclusief landcode |
+| `WHATSAPP_TO` | Optioneel vooraf ingesteld ontvangernummer inclusief landcode |
 | `ADMIN_PASSWORD` | Wachtwoord webscherm, minstens zestien tekens |
 | `PORT` / `SERVER_PORT` | HTTP-poort van de host |
 | `DATA_DIR` | Blijvende opslagmap, standaard `data/` naast de code |

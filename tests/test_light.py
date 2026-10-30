@@ -29,6 +29,7 @@ class Driver:
     def qr(self):return None
     def start(self):pass
     def stop(self):pass
+    def set_recipient(self,number):self.recipient=number
 
 class LightTests(unittest.TestCase):
     def setUp(self):
@@ -91,6 +92,12 @@ class LightTests(unittest.TestCase):
         self.assertGreaterEqual(len(first),16)
         self.assertEqual((self.root/'admin-password.txt').stat().st_mode&0o777,0o600)
         with self.assertRaises(ValueError):password_for(self.root,'short')
+    def test_unconfigured_recipient_can_pair_but_cannot_send(self):
+        driver=NativeWhatsApp(self.root/'auth','')
+        driver._ready=True
+        self.assertFalse(driver.ready())
+        driver.set_recipient('31612345678');self.assertTrue(driver.ready())
+        with self.assertRaises(ValueError):driver.set_recipient('wrong')
 
 class WebTests(unittest.TestCase):
     def setUp(self):
@@ -114,6 +121,12 @@ class WebTests(unittest.TestCase):
     def test_cross_origin_post_rejected(self):
         self.assertEqual(self.request('/test','POST',origin='https://evil.test')[0],403)
         self.assertEqual(len(self.driver.sent),0)
+    def test_recipient_setup_requires_auth_and_persists(self):
+        self.assertEqual(self.request('/recipient','POST',auth=False,body='number=31612345678')[0],401)
+        self.assertEqual(self.request('/recipient','POST',body='number=invalid')[0],400)
+        self.assertEqual(self.request('/recipient','POST',body='number=31612345678')[0],303)
+        self.assertEqual((Path(self.temp.name)/'recipient.txt').read_text(),'31612345678')
+        self.assertEqual(self.driver.recipient,'31612345678')
     def test_test_message_queued_and_sent(self):
         self.assertEqual(self.request('/test','POST')[0],303)
         self.app._flush_pending()
