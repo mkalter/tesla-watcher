@@ -20,6 +20,9 @@ class NativeWhatsApp:
         self._ready=False
         self._qr=None
         self._qr_time=0
+        self._qr_revision=0
+        self._phase='starting'
+        self._relink=threading.Event()
         self._error=''
         self._stop=threading.Event()
         self._thread=None
@@ -31,6 +34,7 @@ class NativeWhatsApp:
     def status(self):
         with self._state_lock:
             return {'ready':self._ready,'qr_available':self._qr is not None and time.monotonic()-self._qr_time<120,
+                    'qr_revision':self._qr_revision,'phase':self._phase,
                     'error':self._error,'driver':'neonize','browser_required':False,'recipient_configured':bool(self.recipient)}
 
     def ready(self):
@@ -57,7 +61,8 @@ class NativeWhatsApp:
                 # Only opt in on a private hosting console; never log QR payloads.
                 code.terminal(compact=True)
         with self._state_lock:
-            self._qr=png;self._qr_time=time.monotonic();self._ready=False;self._error=''
+            self._qr=png;self._qr_time=time.monotonic();self._qr_revision+=1
+            self._ready=False;self._phase='pairing';self._error=''
         print('WhatsApp: nieuwe QR beschikbaar op de beveiligde webpagina.',flush=True)
 
     def _make_client(self):
@@ -65,7 +70,8 @@ class NativeWhatsApp:
         os.environ.setdefault('GOMEMLIMIT','96MiB')
         os.environ.setdefault('GOGC','50')
         from neonize.client import NewClient
-        from neonize.events import ConnectedEv,DisconnectedEv,LoggedOutEv
+        from neonize.events import (ConnectedEv,DisconnectedEv,LoggedOutEv,
+                                    ConnectFailureEv,ClientOutdatedEv,StreamReplacedEv)
         logging.getLogger('Neonize').setLevel(logging.WARNING)
         logging.getLogger('neonize').setLevel(logging.WARNING)
         client=NewClient(str((self.directory/'session.sqlite').resolve()))
@@ -73,17 +79,45 @@ class NativeWhatsApp:
         @client.event(ConnectedEv)
         def connected(_client,_event):
             with self._state_lock:
-                self._ready=True;self._qr=None;self._error=''
+                self._ready=True;self._qr=None;self._phase='connected';self._error=''
             print('WhatsApp: gekoppeld apparaat verbonden.',flush=True)
         @client.event(DisconnectedEv)
         def disconnected(_client,_event):
             with self._state_lock:
-                self._ready=False;self._error='Verbinding verbroken; de client probeert opnieuw te verbinden.'
+                self._ready=False;self._phase='disconnected'
+                self._error='Verbinding verbroken; de client probeert opnieuw te verbinden.'
         @client.event(LoggedOutEv)
         def logged_out(_client,_event):
             with self._state_lock:
-                self._ready=False;self._qr=None;self._error='WhatsApp heeft het apparaat uitgelogd. Opnieuw koppelen vereist.'
+                self._ready=False;self._qr=None;self._phase='logged_out'
+                self._error='WhatsApp heeft het apparaat uitgelogd. Klik op Opnieuw koppelen.'
+        @client.event(ConnectFailureEv)
+        def connect_failed(_client,_event):
+            with self._state_lock:
+                self._ready=False;self._phase='error'
+                self._error='WhatsApp-verbinding mislukt. Controleer bereikbaarheid en serverlogs.'
+        @client.event(ClientOutdatedEv)
+        def client_outdated(_client,_event):
+            with self._state_lock:
+                self._ready=False;self._phase='error'
+                self._error='WhatsApp weigert deze clientversie. Neonize moet worden bijgewerkt.'
+        @client.event(StreamReplacedEv)
+        def stream_replaced(_client,_event):
+            with self._state_lock:
+                self._ready=False;self._phase='error'
+                self._error='WhatsApp-sessie overgenomen door een andere actieve instantie.'
         return client
+
+    def relink(self):
+        """Explicitly discard a broken linked-device session and request a fresh QR."""
+        self._relink.set()
+        with self._state_lock:
+            self._ready=False;self._qr=None;self._phase='restarting'
+            self._error='WhatsApp-sessie wordt vernieuwd; wacht op een nieuwe QR-code.'
+        client=self._client
+        if client:
+            try:client.stop()
+            except Exception:pass
 
     def start(self):
         if self._thread and self._thread.is_alive():return
@@ -111,19 +145,41 @@ class NativeWhatsApp:
         delay=5
         while not self._stop.is_set():
             try:
+                with self._state_lock:
+                    if self._phase not in ('restarting','logged_out'):
+                        self._phase='connecting'
+                        self._error=''
                 self._client=self._make_client()
                 self._client.connect()
                 delay=5
             except Exception as exc:
                 # No credentials or QR bytes are included in diagnostics.
-                with self._state_lock:self._error=f'WhatsApp-start mislukt ({type(exc).__name__}). Controleer dependencies en hostingconsole.'
-                logging.error('WhatsApp client setup failed: %s',type(exc).__name__)
+                safe_message=str(exc).splitlines()[0][:180]
+                safe_message=re.sub(r'\b\d{12,}\b','[afgeschermd]',safe_message)
+                safe_message=re.sub(r'2@[^\s]+','[QR afgeschermd]',safe_message)
+                with self._state_lock:
+                    self._phase='error'
+                    self._error=f'WhatsApp-start mislukt: {type(exc).__name__}: {safe_message}'
+                logging.error('WhatsApp client setup failed (%s): %s',type(exc).__name__,safe_message)
             finally:
                 with self._state_lock:self._ready=False
                 if self._client:
                     try:self._client.stop()
                     except Exception:pass
                 self._client=None
+                if self._relink.is_set():
+                    try:
+                        # Only after a user-triggered relink and after the client stopped.
+                        for suffix in ('','-wal','-shm'):
+                            (self.directory/('session.sqlite'+suffix)).unlink(missing_ok=True)
+                        with self._state_lock:
+                            self._qr=None;self._qr_time=0;self._phase='connecting';self._error=''
+                    except OSError as exc:
+                        with self._state_lock:
+                            self._phase='error'
+                            self._error=f'Sessie kon niet worden vernieuwd: {type(exc).__name__}'
+                    finally:self._relink.clear()
+                    delay=0
             if self._stop.wait(delay):break
             delay=min(delay*2,120)
 
