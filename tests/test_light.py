@@ -30,6 +30,7 @@ class Driver:
     def start(self):pass
     def stop(self):pass
     def set_recipient(self,number):self.recipient=number
+    def relink(self):self.relink_called=True
 
 class LightTests(unittest.TestCase):
     def setUp(self):
@@ -98,6 +99,14 @@ class LightTests(unittest.TestCase):
         self.assertFalse(driver.ready())
         driver.set_recipient('31612345678');self.assertTrue(driver.ready())
         with self.assertRaises(ValueError):driver.set_recipient('wrong')
+    def test_native_relink_clears_current_qr_and_requests_restart(self):
+        driver=NativeWhatsApp(self.root/'auth','')
+        driver._receive_qr(None,b'test-pairing')
+        driver.relink()
+        self.assertIsNone(driver.qr())
+        self.assertEqual(driver.status()['phase'],'restarting')
+        self.assertTrue(driver._relink.is_set())
+
     def test_expired_pairing_qr_is_restarted_without_touching_connected_client(self):
         driver=NativeWhatsApp(self.root/'auth','')
         driver._qr=b'png';driver._qr_time=10
@@ -125,6 +134,11 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.request('/healthz',auth=False)[0],200)
         self.assertEqual(self.request('/status')[0],200)
         self.assertEqual(self.request('/qr',auth=False)[0],401)
+    def test_relink_requires_login_and_calls_driver(self):
+        self.assertEqual(self.request('/whatsapp/relink','POST',auth=False)[0],401)
+        self.assertEqual(self.request('/whatsapp/relink','POST')[0],303)
+        self.assertTrue(self.driver.relink_called)
+
     def test_cross_origin_post_rejected(self):
         self.assertEqual(self.request('/test','POST',origin='https://evil.test')[0],403)
         self.assertEqual(len(self.driver.sent),0)
