@@ -12,6 +12,22 @@ from .parsing import parse_page, ParseError,set_query
 MAX_BYTES = 8_000_000
 
 
+class SourceAccessError(ParseError):
+    """The website explicitly refused access; do not try browser fallbacks."""
+
+
+def forbidden_reason(exc):
+    """Only report fixed labels, never cookies, challenge URLs or response data."""
+    body = exc.read(65536).decode('utf-8', errors='replace').lower()
+    if any(marker in body for marker in ('datadome', 'captcha-delivery.com')):
+        return 'HTTP 403: website access refused by DataDome (human verification required)'
+    if any(marker in body for marker in ('verify you are human', 'cf-chl-', 'checking your browser', 'enable javascript and cookies')):
+        return 'HTTP 403: website requires browser/human verification'
+    if 'access denied' in body or 'request blocked' in body:
+        return 'HTTP 403: website denied this server access'
+    return 'HTTP 403: access refused; website did not provide a recognised reason'
+
+
 class Fetcher:
     def __init__(self, mode='auto', headed=False):
         self.mode = mode
@@ -46,6 +62,8 @@ class Fetcher:
                         raise ParseError('HTML exceeds size limit')
                     return data.decode(response.headers.get_content_charset() or 'utf-8',errors='replace')
             except urllib.error.HTTPError as exc:
+                if exc.code == 403:
+                    raise SourceAccessError(forbidden_reason(exc)) from exc
                 if exc.code not in (429,500,502,503,504) or attempt==2:
                     raise
                 # Respect Retry-After seconds, within a bounded scan deadline.
