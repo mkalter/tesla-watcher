@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-31",
+  "host": "KataBump",
+  "playwright_version": "1.64.1",
+  "chromium_sandbox": false,
+  "sandbox_change": "explicitly approved by owner",
+  "browser_launch": "ok",
+  "http_status": 403,
+  "page_title": "Zugriff verweigert / Access denied",
+  "status": "error",
+  "pages": 0,
+  "complete_inventory": false,
+  "browser_closed_after_test": true,
+  "production_configuration_changed": false,
+  "note": "Direct Chromium test reached mobile.de; website refused access. No proxy, stealth, challenge solving or alternate data provider used."
+}

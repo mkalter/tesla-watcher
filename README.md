@@ -64,7 +64,7 @@ Een optionele Quick Tunnel geeft een tijdelijke HTTPS-link zonder Cloudflare-acc
 
 Een 403, captcha, timeout of onbekende HTML wordt als bronfout opgeslagen en geldt niet als lege zoeklijst. Fouten staan in het webscherm. Er wordt geen captcha omzeild. Een scan die langer dan tien minuten duurt, overlapt niet met een volgende scan.
 
-**mobile.de:** de bijgewerkte gewone zoekopdracht is lokaal volledig getest: vier pagina’s, 73 passende advertenties. Op de gebruikte KataBump-server gaf mobile.de ook daarna nog HTTP 403. De doorlopende mobile.de-scan op die host is daarom niet als werkend bevestigd. Een eenmalig buiten de host opgehaald voorbeeld is geen bewijs van werkende doorlopende monitoring en wordt apart als zodanig gemarkeerd.
+**mobile.de — controle 31 oktober 2026:** directe HTTP/1.1- en HTTP/2-aanvragen worden op KataBump geweigerd. Chromium headless is op de host geïnstalleerd en gestart nadat de eigenaar expliciet toestemming gaf de Chromium-sandbox voor die test uit te zetten. De browser bereikte mobile.de, maar kreeg HTTP 403 met de paginatitel `Zugriff verweigert / Access denied`. Nul pagina’s met advertenties zijn verwerkt. De testbrowser is gesloten; er is geen werkende directe monitoring op deze host bevestigd en er is geen aggregator geactiveerd. Zie `reports/mobile-host-browser-test.json`.
 
 Bouwjaar wordt gebruikt waar beschikbaar, anders eerste toelating. `allow_first_registration=false` vereist bevestigd bouwjaar. Wijzig je filters, gebruik dan een nieuwe database voor een schone beginstand. Deduplicatie tussen websites gebruikt sterke identifiers zoals VIN of kenteken; zonder zulke identifiers kan dezelfde auto via twee bronnen worden gemeld.
 
