@@ -59,6 +59,23 @@ class StoreTests(unittest.TestCase):
   self.assertEqual(self.store.status()['listings'],0)
  def test_old_year_rejected(self):self.assertEqual(reject_reason(car(year=2020),FILTERS),'too_old')
  def test_wrong_model_rejected(self):self.assertEqual(reject_reason(car(title='Tesla Model 3'),FILTERS),'not_model_s')
+ def test_marketplace_model_s_without_brand_in_title(self):
+  x=car(source='2dehands',url='https://www.2dehands.be/v/auto-s/tesla/m2456538912-model-s',title='Model S Long Range HW4.0')
+  self.assertEqual(reject_reason(x,FILTERS),'')
+  self.assertEqual(reject_reason(car(source='2dehands',url='https://example.test/v/auto-s/tesla/1',title='Model S'),FILTERS),'not_model_s')
+  self.assertEqual(reject_reason(car(source='2dehands',url=x.url,title='Model 3'),FILTERS),'not_model_s')
+ def test_legacy_baseline_brandless_ad_remains_quiet(self):
+  x=car(source='2dehands',url='https://www.2dehands.be/v/auto-s/tesla/m1-model-s',title='Model S Long Range')
+  with patch('watcher.store.reject_reason',return_value='not_model_s'):
+   self.store.ingest('2dehands',[x],T0)
+  self.assertEqual(self.store.ingest('2dehands',[x],T1),[])
+  self.assertEqual(len(self.store.ingest('2dehands',[x,car('b','2dehands',url='https://www.2dehands.be/v/auto-s/tesla/m2-model-s',title='Model S Plaid')],T2)),1)
+ def test_legacy_new_brandless_ad_is_recovered(self):
+  x=car(source='2dehands',url='https://www.2dehands.be/v/auto-s/tesla/m1-model-s',title='Model S Long Range')
+  self.store.ingest('2dehands',[car('baseline','2dehands')],T0)
+  with patch('watcher.store.reject_reason',return_value='not_model_s'):
+   self.store.ingest('2dehands',[x],T1)
+  self.assertEqual(len(self.store.ingest('2dehands',[x],T2)),1)
  def test_wanted_rejected(self):self.assertEqual(reject_reason(car(is_wanted=True),FILTERS),'wanted_ad')
  def test_foreign_currency_with_eur_cap_rejected(self):
   self.assertEqual(reject_reason(car(currency='USD'),{**FILTERS,'max_price':55000}),'non_eur_price')
