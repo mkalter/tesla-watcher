@@ -1,6 +1,7 @@
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 import re
+from urllib.parse import urlsplit
 
 
 def now():
@@ -36,7 +37,17 @@ class Listing:
 
 def reject_reason(x, filters):
     title = x.title.casefold()
-    if not re.search(r'\btesla\b', title) or not re.search(r'\bmodel[\s-]*s\b', title):
+    # These marketplace links are already inside the Tesla car category;
+    # sellers do not always repeat the brand in their title.
+    url = urlsplit(x.url)
+    tesla_category = (
+        (x.source, url.hostname) in {
+            ('marktplaats', 'www.marktplaats.nl'),
+            ('2dehands', 'www.2dehands.be'),
+        }
+        and url.path.startswith('/v/auto-s/tesla/')
+    )
+    if not (re.search(r'\btesla\b', title) or tesla_category) or not re.search(r'\bmodel[\s-]*s\b', title):
         return 'not_model_s'
     if x.is_wanted:
         return 'wanted_ad'
