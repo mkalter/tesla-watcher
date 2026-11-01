@@ -98,7 +98,14 @@ class Store:
                 old_price = previous.get('price')
                 kind = None
                 if eligible and not seen:
-                    if not baseline:
+                    # Ads from the original baseline that were excluded only
+                    # because their title omitted the brand remain baseline ads.
+                    # Later previously missed ads may still trigger an alert.
+                    original_baseline = False
+                    if old and previous.get('title') == x.title and not re.search(r'\btesla\b', x.title, re.I):
+                        first = self.db.execute('SELECT MIN(first_seen) FROM listings WHERE source=?', (source,)).fetchone()[0]
+                        original_baseline = old['first_seen'] == first
+                    if not baseline and not original_baseline:
                         kind = 'new'
                     self.db.execute('UPDATE cars SET eligible_seen=1 WHERE id=?', (car_id,))
                 elif eligible and not baseline and price_alerts and old_price is not None and x.price is not None and old_price - x.price >= min_drop:
