@@ -98,11 +98,11 @@ class Store:
                 old_price = previous.get('price')
                 kind = None
                 if eligible and not seen:
-                    # Ads from the original baseline that were excluded only
-                    # because their title omitted the brand remain baseline ads.
-                    # Later previously missed ads may still trigger an alert.
+                    # Previously misclassified ads from the original baseline
+                    # remain baseline ads; later missed ads may trigger alerts.
                     original_baseline = False
-                    if old and previous.get('title') == x.title and not re.search(r'\btesla\b', x.title, re.I):
+                    reclassified = previous.get('is_lease') and not x.is_lease
+                    if old and previous.get('title') == x.title and (reclassified or not re.search(r'\btesla\b', x.title, re.I)):
                         first = self.db.execute('SELECT MIN(first_seen) FROM listings WHERE source=?', (source,)).fetchone()[0]
                         original_baseline = old['first_seen'] == first
                     if not baseline and not original_baseline:
