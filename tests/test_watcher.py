@@ -5,7 +5,7 @@ import json
 import os
 import urllib.error
 from unittest.mock import patch
-from watcher.models import Listing,reject_reason
+from watcher.models import Listing,reject_reason,message
 from watcher.store import Store
 from watcher.parsing import parse_page,amount,canonical_url,ParseError
 from watcher.cli import replay,process_lock,scan
@@ -99,6 +99,19 @@ class StoreTests(unittest.TestCase):
 class ParserTests(unittest.TestCase):
  def setUp(self):
   self.source={'name':'test','url':'https://example.test/search','country':'NL','link_pattern':r'^https://example\.test/car/'}
+ def test_autoscout_extra_country_and_pagination(self):
+  cfg=json.loads((Path(__file__).resolve().parents[1]/'config.light.json').read_text())
+  source=next(s for s in cfg['sources'] if s['name']=='autoscout_extra')
+  data={'props':{'pageProps':{'numberOfPages':2,'numberOfResults':30,'listings':[{
+   'id':'123','title':'Tesla Model S Long Range','url':'/aanbod/test-123',
+   'vehicle':{'mileageInKm':43000},'tracking':{'firstRegistration':'01-2023'},
+   'location':{'countryCode':'AT','city':'Studenzen'},'price':{'value':58980}}]}}}
+  html='<script id="__NEXT_DATA__" type="application/json">'+json.dumps(data)+'</script>'
+  items,next_url,empty=parse_page(html,source,T0)
+  self.assertEqual((len(items),items[0].country,items[0].year,items[0].price),(1,'AT',2023,58980))
+  self.assertIn('page=2',next_url);self.assertIn('cy=A%2CE%2CF%2CI%2CL',next_url)
+  self.assertIn('Oostenrijk',message(items[0]));self.assertIn('AutoScout24 Europa',message(items[0]))
+  self.assertFalse(empty)
  def test_snapshot_throttle_keeps_one_per_source_per_six_hours(self):
   import gzip
   with tempfile.TemporaryDirectory() as d:
