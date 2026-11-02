@@ -73,14 +73,14 @@ def scan(c,args,notifier=None):
                 source=futures[future]
                 try:
                     items,pages,observed_at=future.result()
-                    archive_snapshot(c['archive_dir'],source['name'],observed_at,items,pages=pages,compress=c.get('compress_snapshots',False))
+                    archive_snapshot(c['archive_dir'],source['name'],observed_at,items,pages=pages,compress=c.get('compress_snapshots',False),interval_seconds=c.get('snapshot_interval_seconds',21600))
                     events=store.ingest(source['name'],items,observed_at,c.get('price_alerts',False),c.get('min_price_drop',500))
                     row={'source':source['name'],'status':'ok','pages':pages,'parsed':len(items),
                          'matching':sum(not reject_reason(x,c['filters']) for x in items),'events':len(events)}
                 except Exception as exc:
                     # Never bootstrap/advance a source from a failed or incomplete result.
                     store.fail(source['name'],str(exc),timestamp)
-                    archive_snapshot(c['archive_dir'],source['name'],timestamp,error=str(exc),compress=c.get('compress_snapshots',False))
+                    archive_snapshot(c['archive_dir'],source['name'],timestamp,error=str(exc),compress=c.get('compress_snapshots',False),interval_seconds=c.get('snapshot_interval_seconds',21600))
                     row={'source':source['name'],'status':'error','error':str(exc)[:400]}
                 summary.append(row)
                 print(json.dumps(row,ensure_ascii=False),flush=True)
