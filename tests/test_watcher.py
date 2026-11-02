@@ -7,7 +7,7 @@ import urllib.error
 from unittest.mock import patch
 from watcher.models import Listing,reject_reason,message
 from watcher.store import Store
-from watcher.parsing import parse_page,amount,canonical_url,ParseError
+from watcher.parsing import parse_page,amount,canonical_url,from_record,ParseError
 from watcher.cli import replay,process_lock,scan
 from watcher.notify import deliver
 from watcher.sources import scan_source,archive_snapshot
@@ -76,6 +76,14 @@ class StoreTests(unittest.TestCase):
   with patch('watcher.store.reject_reason',return_value='not_model_s'):
    self.store.ingest('2dehands',[x],T1)
   self.assertEqual(len(self.store.ingest('2dehands',[x],T2)),1)
+ def test_reclassified_baseline_subscription_ad_stays_quiet(self):
+  x=car('fsd',title='Tesla Model S FSD READY 49 EUR/MONTH',is_lease=True,price=84990)
+  self.store.ingest('test',[x],T0)
+  self.assertEqual(self.store.ingest('test',[car('fsd',title=x.title,is_lease=False,price=84990)],T1),[])
+ def test_reclassified_new_subscription_ad_gets_notification(self):
+  self.store.ingest('test',[car('baseline')],T0)
+  self.store.ingest('test',[car('fsd',title='Tesla Model S FSD READY 49 EUR/MONTH',is_lease=True,price=84990)],T1)
+  self.assertEqual(len(self.store.ingest('test',[car('fsd',title='Tesla Model S FSD READY 49 EUR/MONTH',is_lease=False,price=84990)],T2)),1)
  def test_wanted_rejected(self):self.assertEqual(reject_reason(car(is_wanted=True),FILTERS),'wanted_ad')
  def test_foreign_currency_with_eur_cap_rejected(self):
   self.assertEqual(reject_reason(car(currency='USD'),{**FILTERS,'max_price':55000}),'non_eur_price')
@@ -99,6 +107,12 @@ class StoreTests(unittest.TestCase):
 class ParserTests(unittest.TestCase):
  def setUp(self):
   self.source={'name':'test','url':'https://example.test/search','country':'NL','link_pattern':r'^https://example\.test/car/'}
+ def test_fsd_subscription_is_not_a_car_lease(self):
+  record={'url':'/car/1','title':'Tesla Model S FSD READY 49 EUR/MONTH','year':2023,'price':84990}
+  self.assertFalse(from_record(record,self.source,T0).is_lease)
+  self.assertTrue(from_record({**record,'price':499},self.source,T0).is_lease)
+  self.assertTrue(from_record({**record,'title':record['title']+' lease only'},self.source,T0).is_lease)
+  self.assertTrue(from_record({**record,'title':'Tesla Model S €499/month'},self.source,T0).is_lease)
  def test_autoscout_extra_country_and_pagination(self):
   cfg=json.loads((Path(__file__).resolve().parents[1]/'config.light.json').read_text())
   source=next(s for s in cfg['sources'] if s['name']=='autoscout_extra')
