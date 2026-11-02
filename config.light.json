@@ -60,6 +60,15 @@
       "max_pages": 50
     },
     {
+      "name": "autoscout_extra",
+      "kind": "autoscout",
+      "enabled": true,
+      "url": "https://www.autoscout24.nl/lst/tesla/model-s?fregfrom=2022&cy=A%2CE%2CF%2CI%2CL&damaged_listing=exclude&ustate=N%2CU&atype=C",
+      "country": "",
+      "link_pattern": "^https://www\\.autoscout24\\.nl/aanbod/",
+      "max_pages": 50
+    },
+    {
       "name": "marktplaats",
       "kind": "marketplace",
       "enabled": true,
