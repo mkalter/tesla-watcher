@@ -86,9 +86,9 @@ def message(x, kind='new', previous_price=None):
     money=lambda value:(('€' if x.currency=='EUR' else clean(x.currency))+' '+f'{value:,}'.replace(',','.')) if value is not None else 'Prijs op aanvraag'
     variant='Plaid' if re.search(r'\bplaid\b',x.title,re.I) else 'Long Range' if re.search(r'long[ -]*range|\blr\b',x.title,re.I) else ''
     title='Tesla Model S'+(' '+variant if variant else '')
-    countries={'NL':'Nederland','BE':'België','DE':'Duitsland','SE':'Zweden','NO':'Noorwegen','DK':'Denemarken','FR':'Frankrijk','US':'Verenigde Staten'}
+    countries={'NL':'Nederland','BE':'België','DE':'Duitsland','SE':'Zweden','NO':'Noorwegen','DK':'Denemarken','FR':'Frankrijk','AT':'Oostenrijk','IT':'Italië','ES':'Spanje','LU':'Luxemburg','US':'Verenigde Staten'}
     location=' · '.join(v for v in [clean(x.location),countries.get(x.country,clean(x.country))] if v) or 'Niet vermeld'
-    sources={'carapis':'CarAPIS','autoscout_nl':'AutoScout24 NL','autoscout_be':'AutoScout24 BE','autoscout_de':'AutoScout24 DE','marktplaats':'Marktplaats','gaspedaal':'Gaspedaal','mobile':'mobile.de','2dehands':'2dehands.be','kleinanzeigen':'Kleinanzeigen'}
+    sources={'carapis':'CarAPIS','autoscout_nl':'AutoScout24 NL','autoscout_be':'AutoScout24 BE','autoscout_de':'AutoScout24 DE','autoscout_extra':'AutoScout24 Europa','marktplaats':'Marktplaats','gaspedaal':'Gaspedaal','mobile':'mobile.de','2dehands':'2dehands.be','kleinanzeigen':'Kleinanzeigen'}
     year=str(x.year) if x.year else 'Niet vermeld'
     if x.year_basis=='first_registration':year+=' (eerste toelating)'
     mileage=f'{x.mileage:,}'.replace(',','.')+' km' if x.mileage is not None else 'Niet vermeld'
