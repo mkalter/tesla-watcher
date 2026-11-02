@@ -10,7 +10,7 @@ from watcher.store import Store
 from watcher.parsing import parse_page,amount,canonical_url,ParseError
 from watcher.cli import replay,process_lock
 from watcher.notify import deliver
-from watcher.sources import scan_source
+from watcher.sources import scan_source,archive_snapshot
 
 FILTERS={'min_year':2022,'allow_first_registration':True}
 T0='2026-10-01T00:00:00+00:00'
@@ -99,6 +99,17 @@ class StoreTests(unittest.TestCase):
 class ParserTests(unittest.TestCase):
  def setUp(self):
   self.source={'name':'test','url':'https://example.test/search','country':'NL','link_pattern':r'^https://example\.test/car/'}
+ def test_snapshot_throttle_keeps_one_per_source_per_six_hours(self):
+  import gzip
+  with tempfile.TemporaryDirectory() as d:
+   archive_snapshot(d,'one',T0,[car(source='one')],compress=True,interval_seconds=21600)
+   archive_snapshot(d,'one',T1,[car('b','one')],compress=True,interval_seconds=21600)
+   archive_snapshot(d,'two',T1,[car('c','two')],compress=True,interval_seconds=21600)
+   archive_snapshot(d,'one','2026-10-01T06:00:00+00:00',[car('d','one')],compress=True,interval_seconds=21600)
+   files=sorted(Path(d).rglob('*.json.gz'))
+   self.assertEqual(len(files),3)
+   with gzip.open(files[0],mode='rt',encoding='utf-8') as f:self.assertEqual(json.load(f)['listings'][0]['source_id'],'a')
+   replay([d],FILTERS,str(Path(d)/'replay-report.json'))
  def test_prices(self):
   for value,expected in [('54.950',54950),('54,950',54950),('54.950,00',54950),('54950.00',54950),('54 950',54950),('Bieden',None)]:
    with self.subTest(value=value):self.assertEqual(amount(value),expected)
