@@ -6,7 +6,7 @@ import urllib.request
 import urllib.error
 from urllib.parse import urlsplit
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from .parsing import parse_page, ParseError,set_query
 
 MAX_BYTES = 8_000_000
@@ -165,15 +165,34 @@ def scan_source(fetcher,source,timestamp,archive_dir=None,capture_html=False):
     return list(listings.values()),pages
 
 
-def archive_snapshot(folder,source,timestamp,listings=None,error=None,pages=0,compress=False):
-    path=Path(folder)/timestamp[:10]
+def archive_snapshot(folder,source,timestamp,listings=None,error=None,pages=0,compress=False,interval_seconds=0):
+    # Archive one diagnostic snapshot per source and time bucket, while the
+    # database and notifications continue to process every scan.
+    archive_stamp = timestamp
+    if interval_seconds:
+        interval_seconds = int(interval_seconds)
+        if interval_seconds < 1:
+            raise ValueError('snapshot interval must be non-negative')
+        observed = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        if observed.tzinfo is None:
+            raise ValueError('snapshot timestamp must have a timezone')
+        bucket = int(observed.timestamp()) // interval_seconds * interval_seconds
+        archive_stamp = datetime.fromtimestamp(bucket, timezone.utc).isoformat(timespec='seconds')
+    path=Path(folder)/archive_stamp[:10]
     path.mkdir(parents=True,exist_ok=True)
     payload={'timestamp':timestamp,'source':source,'status':'error' if error else 'ok',
              'error':str(error) if error else None,'pages':pages,
              'listings':[x.to_dict() for x in listings or []]}
-    target=path/(timestamp.replace(':','-')+'-'+source+'.json')
+    extension = '.json.gz' if compress else '.json'
+    stamp = timestamp.replace(':','-')
+    if interval_seconds:
+        bucket_suffix = '--' + archive_stamp.replace(':','-')
+        if next(path.glob('*-' + source + bucket_suffix + extension), None) is not None:
+            return payload
+    else:
+        bucket_suffix = ''
+    target=path/(stamp+'-'+source+bucket_suffix+extension)
     if compress:
-        target=target.with_suffix('.json.gz')
         with gzip.open(target,'wt',encoding='utf-8') as handle:json.dump(payload,handle,ensure_ascii=False)
     else:target.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8')
     return payload
