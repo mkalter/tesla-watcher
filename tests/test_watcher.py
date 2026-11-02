@@ -8,7 +8,7 @@ from unittest.mock import patch
 from watcher.models import Listing,reject_reason
 from watcher.store import Store
 from watcher.parsing import parse_page,amount,canonical_url,ParseError
-from watcher.cli import replay,process_lock
+from watcher.cli import replay,process_lock,scan
 from watcher.notify import deliver
 from watcher.sources import scan_source,archive_snapshot
 
@@ -110,6 +110,20 @@ class ParserTests(unittest.TestCase):
    self.assertEqual(len(files),3)
    with gzip.open(files[0],mode='rt',encoding='utf-8') as f:self.assertEqual(json.load(f)['listings'][0]['source_id'],'a')
    replay([d],FILTERS,str(Path(d)/'replay-report.json'))
+ def test_each_scan_detects_new_cars_when_archives_are_throttled(self):
+  from types import SimpleNamespace
+  with tempfile.TemporaryDirectory() as d:
+   root=Path(d)
+   cfg={'database':str(root/'db.sqlite'),'archive_dir':str(root/'snapshots'),'status_file':str(root/'status.json'),
+        'filters':FILTERS,'sources':[{'name':'test'}], 'notifications':{'enabled':True},'compress_snapshots':True}
+   args=SimpleNamespace(mode='http',headed=False,source=None,capture_html=False,no_send=False)
+   observed=[]
+   with patch('watcher.cli.Fetcher'), patch('watcher.cli.now',side_effect=[T0,T0,T1,T1]), \
+        patch('watcher.cli.scan_source',side_effect=[([car()],1),([car(),car('b')],1)]):
+    for _ in range(2):
+     self.assertEqual(scan(cfg,args,notifier=lambda store:observed.append(len(store.events())) or 0),0)
+   self.assertEqual(observed,[0,1])
+   self.assertEqual(len(list((root/'snapshots').rglob('*.json.gz'))),1)
  def test_prices(self):
   for value,expected in [('54.950',54950),('54,950',54950),('54.950,00',54950),('54950.00',54950),('54 950',54950),('Bieden',None)]:
    with self.subTest(value=value):self.assertEqual(amount(value),expected)
