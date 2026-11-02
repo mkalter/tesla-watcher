@@ -198,6 +198,11 @@ def from_record(record, source, observed_at):
         seller = first(seller, 'name', 'companyName', 'sellerName') or ''
     desc = scalar(r.get('description'))
     flags = (title + ' ' + desc + ' ' + price_type).casefold()
+    # A monthly fee for the FSD option is not a monthly lease for the car.
+    # Only remove this specific phrase when there is also a full vehicle price.
+    lease_flags = flags
+    if price is not None and price >= 10000:
+        lease_flags = re.sub(r'\b(?:fsd|full[ -]self[ -]driv(?:e|ing))\s*(?:ready\s*)?\d+(?:[.,]\d+)?\s*(?:eur|€)?\s*(?:/|per)\s*(?:mnd|maand|month|monat)\b', '', lease_flags)
     # Unknown card years may be recovered only from explicitly labelled text.
     if year is None:
         m = re.search(r'(?:bouwjaar|bj\.?|baujahr|modeljaar)\s*[:\s]*((?:19|20)\d{2})', title + ' ' + desc, re.I)
@@ -217,7 +222,7 @@ def from_record(record, source, observed_at):
                    published_at=scalar(first(r, 'datePosted', 'published_at', 'first_seen_at')),
                    observed_at=observed_at,image_url=image_url(first(r,'image','images','imageUrls','photo','thumbnailUrl'),source['url']),
                    is_wanted=bool(re.search(r'\b(gezocht|gesuch|gesucht|suche|wanted)\b', flags)),
-                   is_lease=bool(re.search(r'per maand|/\s*(?:mnd|month|monat)|monthly|lease only|leaseprijs', flags)),
+                   is_lease=bool(re.search(r'per maand|/\s*(?:mnd|month|monat)|monthly|lease only|leaseprijs', lease_flags)),
                    damaged=bool(re.search(r'\b(schadeauto|unfallwagen|unfallfahrzeug|bastlerfahrzeug|accident[eé])\b', flags)
                                 or re.search(r'\b(unfall|schade|beschadigd)\b', title, re.I)))
 
